@@ -6,7 +6,7 @@
 
 #include "revng/EarlyFunctionAnalysis/FunctionMetadataCache.h"
 #include "revng/Model/Binary.h"
-#include "revng/Model/Type.h"
+#include "revng/Model/TypeDefinition.h"
 
 #include "revng-c/DataLayoutAnalysis/DLALayouts.h"
 #include "revng-c/DataLayoutAnalysis/DLATypeSystem.h"

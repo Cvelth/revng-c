@@ -54,7 +54,7 @@ static bool adjustStackAfterCalls(FunctionMetadataCache &Cache,
   for (BasicBlock &BB : F) {
     for (Instruction &I : BB) {
       if (isCallToIsolatedFunction(&I)) {
-        // TODO: handle CABIFunctionType
+        // TODO: handle CABIFunctionDefinition
         auto *Proto = Cache
                         .getCallSitePrototype(Binary,
                                               cast<CallInst>(&I),

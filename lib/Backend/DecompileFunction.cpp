@@ -36,13 +36,13 @@
 #include "revng/Model/Helpers.h"
 #include "revng/Model/IRHelpers.h"
 #include "revng/Model/Identifier.h"
-#include "revng/Model/PrimitiveTypeKind.h"
+#include "revng/Model/PrimitiveKind.h"
 #include "revng/Model/QualifiedType.h"
 #include "revng/Model/Qualifier.h"
-#include "revng/Model/RawFunctionType.h"
+#include "revng/Model/RawFunctionDefinition.h"
 #include "revng/Model/Segment.h"
-#include "revng/Model/StructType.h"
-#include "revng/Model/Type.h"
+#include "revng/Model/StructDefinition.h"
+#include "revng/Model/TypeDefinition.h"
 #include "revng/Model/VerifyHelper.h"
 #include "revng/PTML/Constants.h"
 #include "revng/PTML/IndentedOstream.h"
@@ -82,10 +82,10 @@ using llvm::raw_ostream;
 using llvm::StringRef;
 
 using model::Binary;
-using model::CABIFunctionType;
+using model::CABIFunctionDefinition;
 using model::QualifiedType;
-using model::RawFunctionType;
-using model::TypedefType;
+using model::RawFunctionDefinition;
+using model::TypedefDefinition;
 
 using pipeline::serializedLocation;
 using ptml::Tag;
@@ -97,8 +97,9 @@ using tokenDefinition::types::StringToken;
 
 using TokenMapT = std::map<const llvm::Value *, std::string>;
 using ModelTypesMap = std::map<const llvm::Value *, const model::QualifiedType>;
+using TypeDefinitionSet = std::set<const model::TypeDefinition *>;
 using InlineableTypesMap = std::unordered_map<const model::Function *,
-                                              std::set<const model::Type *>>;
+                                              TypeDefinitionSet>;
 
 using LocalVarDeclSet = llvm::SmallSetVector<const CallInst *, 4>;
 using ASTVarDeclMap = std::unordered_map<const ASTNode *, LocalVarDeclSet>;
@@ -192,7 +193,7 @@ static std::string get128BitIntegerHexConstant(llvm::APInt Value,
   revng_assert(Value.getBitWidth() <= 128);
   using PTMLOperator = ptml::PTMLCBuilder::Operator;
 
-  using model::PrimitiveTypeKind::Unsigned;
+  using model::PrimitiveKind::Unsigned;
   model::QualifiedType
     U128 = model::QualifiedType(Model.getPrimitiveType(Unsigned, 16), {});
   std::string Cast = addAlwaysParentheses(getTypeName(U128, B));
@@ -285,7 +286,7 @@ private:
   /// The model function corresponding to LLVMFunction
   const model::Function &ModelFunction;
   /// The model prototype of ModelFunction
-  const model::Type &Prototype;
+  const model::TypeDefinition &Prototype;
   /// The (combed) control flow AST
   const ASTTree &GHAST;
 
@@ -411,7 +412,7 @@ private:
   RecursiveCoroutine<std::string>
   getCallToken(const llvm::CallInst *Call,
                const llvm::StringRef FuncName,
-               const model::Type *Prototype) const;
+               const model::TypeDefinition *Prototype) const;
 
   RecursiveCoroutine<std::string> getConstantToken(const llvm::Value *V) const;
 
@@ -635,8 +636,9 @@ CCodeGenerator::getConstantToken(const llvm::Value *C) const {
 static RecursiveCoroutine<QualifiedType>
 flattenTypedefsIgnoringConst(const QualifiedType &QT) {
   QualifiedType Result = peelConstAndTypedefs(QT);
-  if (auto *TD = dyn_cast<TypedefType>(Result.UnqualifiedType().getConst())) {
-    auto &Underlying = TD->UnderlyingType();
+  const auto *Unqualified = Result.UnqualifiedType().getConst();
+  if (auto *Typedef = dyn_cast<TypedefDefinition>(Unqualified)) {
+    auto &Underlying = Typedef->UnderlyingType();
     QualifiedType Nested = rc_recur flattenTypedefsIgnoringConst(Underlying);
     Result.UnqualifiedType() = Nested.UnqualifiedType();
     llvm::move(Nested.Qualifiers(), std::back_inserter(Result.Qualifiers()));
@@ -787,12 +789,12 @@ CCodeGenerator::getModelGEPToken(const llvm::CallInst *Call) const {
       // Find the field name
       const auto *UnqualType = CurType.UnqualifiedType().getConst();
 
-      if (auto *Struct = dyn_cast<model::StructType>(UnqualType)) {
+      if (auto *Struct = dyn_cast<model::StructDefinition>(UnqualType)) {
         const model::StructField &Field = Struct->Fields().at(FieldIdx);
         CurExpr += B.getLocationReference(*Struct, Field);
         CurType = Struct->Fields().at(FieldIdx).Type();
 
-      } else if (auto *Union = dyn_cast<model::UnionType>(UnqualType)) {
+      } else if (auto *Union = dyn_cast<model::UnionDefinition>(UnqualType)) {
         const model::UnionField &Field = Union->Fields().at(FieldIdx);
         CurExpr += B.getLocationReference(*Union, Field);
         CurType = Union->Fields().at(FieldIdx).Type();
@@ -903,8 +905,8 @@ CCodeGenerator::getCustomOpcodeToken(const llvm::CallInst *Call) const {
                                                                ->getZExtValue(),
                                                              B);
     } else {
-      const model::Type *CalleeType = CalleePrototype.getConst();
-      auto RFT = llvm::cast<const model::RawFunctionType>(CalleeType);
+      const model::TypeDefinition *CalleeType = CalleePrototype.getConst();
+      auto RFT = llvm::cast<const model::RawFunctionDefinition>(CalleeType);
       uint64_t Index = Idx->getZExtValue();
       StructFieldRef = std::next(RFT->ReturnValues().begin(), Index)
                          ->name()
@@ -1238,8 +1240,8 @@ CCodeGenerator::getInstructionToken(const llvm::Instruction *I) const {
       } else {
         // If we're not doing eq or neq, we have to make sure that the
         // signedness is compatible, otherwise it would break semantics.
-        using model::PrimitiveTypeKind::Signed;
-        using model::PrimitiveTypeKind::Unsigned;
+        using model::PrimitiveKind::Signed;
+        using model::PrimitiveKind::Unsigned;
         auto ICmpKind = ICmp->isSigned() ? Signed : Unsigned;
 
         auto TargetType = model::QualifiedType(Model.getPrimitiveType(ICmpKind,
@@ -1248,17 +1250,17 @@ CCodeGenerator::getInstructionToken(const llvm::Instruction *I) const {
         if (OpType0.isPointer()) {
           Op0Token = buildCastExpr(Op0Token, OpType0, TargetType);
         } else {
-          const model::Type *TheType = peelConstAndTypedefs(OpType0)
-                                         .UnqualifiedType()
-                                         .getConst();
-          revng_assert(isa<model::PrimitiveType>(TheType)
-                       or isa<model::EnumType>(TheType));
-          const auto *Primitive = dyn_cast<model::PrimitiveType>(TheType);
+          const model::TypeDefinition *TheType = peelConstAndTypedefs(OpType0)
+                                                   .UnqualifiedType()
+                                                   .getConst();
+          revng_assert(isa<model::PrimitiveDefinition>(TheType)
+                       or isa<model::EnumDefinition>(TheType));
+          const auto *Primitive = dyn_cast<model::PrimitiveDefinition>(TheType);
           if (nullptr == Primitive) {
-            const auto *Enum = cast<model::EnumType>(TheType);
+            const auto *Enum = cast<model::EnumDefinition>(TheType);
             const auto
               *Underlying = Enum->UnderlyingType().UnqualifiedType().getConst();
-            Primitive = cast<model::PrimitiveType>(Underlying);
+            Primitive = cast<model::PrimitiveDefinition>(Underlying);
           }
           auto CurrentKind = Primitive->PrimitiveKind();
           if (ICmpKind == Signed and CurrentKind != Signed)
@@ -1270,10 +1272,10 @@ CCodeGenerator::getInstructionToken(const llvm::Instruction *I) const {
         if (OpType1.isPointer()) {
           Op1Token = buildCastExpr(Op1Token, OpType1, TargetType);
         } else {
-          const model::Type *TheType = peelConstAndTypedefs(OpType1)
-                                         .UnqualifiedType()
-                                         .getConst();
-          const auto *Primitive = cast<model::PrimitiveType>(TheType);
+          const model::TypeDefinition *TheType = peelConstAndTypedefs(OpType1)
+                                                   .UnqualifiedType()
+                                                   .getConst();
+          const auto *Primitive = cast<model::PrimitiveDefinition>(TheType);
           auto CurrentKind = Primitive->PrimitiveKind();
           if (ICmpKind == Signed and CurrentKind != Signed)
             Op1Token = buildCastExpr(Op1Token, OpType1, TargetType);
@@ -1424,7 +1426,7 @@ CCodeGenerator::getToken(const llvm::Value *V) const {
 RecursiveCoroutine<std::string>
 CCodeGenerator::getCallToken(const llvm::CallInst *Call,
                              const llvm::StringRef FuncName,
-                             const model::Type *Prototype) const {
+                             const model::TypeDefinition *Prototype) const {
   std::string Expression = FuncName.str();
   if (Call->arg_size() == 0) {
     Expression += "()";
@@ -1937,15 +1939,15 @@ RecursiveCoroutine<void> CCodeGenerator::emitGHASTNode(const ASTNode *N) {
       SwitchVarToken = LoopStateVar;
 
       // TODO: finer decision on the type of the loop state variable
-      using model::PrimitiveTypeKind::Unsigned;
+      using model::PrimitiveKind::Unsigned;
       SwitchVarType.UnqualifiedType() = Model.getPrimitiveType(Unsigned, 8);
     }
     revng_assert(not SwitchVarToken.empty());
 
-    if (not SwitchVarType.is(model::TypeKind::PrimitiveType)) {
+    if (not SwitchVarType.is(model::TypeDefinitionKind::PrimitiveDefinition)) {
       model::QualifiedType BoolTy;
       // TODO: finer decision on how to cast structs used in a switch
-      using model::PrimitiveTypeKind::Unsigned;
+      using model::PrimitiveKind::Unsigned;
       BoolTy.UnqualifiedType() = Model.getPrimitiveType(Unsigned, 8);
 
       SwitchVarToken = buildCastExpr(SwitchVarToken, SwitchVarType, BoolTy);
@@ -2049,12 +2051,12 @@ RecursiveCoroutine<void> CCodeGenerator::emitGHASTNode(const ASTNode *N) {
   rc_return;
 }
 
-static std::string getModelArgIdentifier(const model::Type *ModelFunctionType,
+static std::string getModelArgIdentifier(const model::TypeDefinition *ModelFT,
                                          const llvm::Argument &Argument) {
   const llvm::Function *LLVMFunction = Argument.getParent();
   unsigned ArgNo = Argument.getArgNo();
 
-  if (auto *RFT = dyn_cast<model::RawFunctionType>(ModelFunctionType)) {
+  if (auto *RFT = dyn_cast<model::RawFunctionDefinition>(ModelFT)) {
     auto NumModelArguments = RFT->Arguments().size();
     revng_assert(ArgNo <= NumModelArguments + 1);
     revng_assert(LLVMFunction->arg_size() == NumModelArguments
@@ -2065,7 +2067,7 @@ static std::string getModelArgIdentifier(const model::Type *ModelFunctionType,
     } else {
       return "_stack_arguments";
     }
-  } else if (auto *CFT = dyn_cast<model::CABIFunctionType>(ModelFunctionType)) {
+  } else if (auto *CFT = dyn_cast<model::CABIFunctionDefinition>(ModelFT)) {
     revng_assert(LLVMFunction->arg_size() == CFT->Arguments().size());
     revng_assert(ArgNo < CFT->Arguments().size());
     return CFT->Arguments().at(ArgNo).name().str().str();
@@ -2132,7 +2134,7 @@ void CCodeGenerator::emitFunction(bool NeedsLocalStateVar,
             printForwardDeclaration(*Type, Out, B);
           }
           printDefinition(Log,
-                          *cast<model::StructType>(TheType),
+                          *cast<model::StructDefinition>(TheType),
                           Out,
                           B,
                           Model,

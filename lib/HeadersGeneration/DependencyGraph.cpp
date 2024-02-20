@@ -13,7 +13,7 @@
 #include "revng/ADT/FilteredGraphTraits.h"
 #include "revng/ADT/GenericGraph.h"
 #include "revng/Model/Binary.h"
-#include "revng/Model/Type.h"
+#include "revng/Model/TypeDefinition.h"
 #include "revng/Support/Assert.h"
 #include "revng/Support/Debug.h"
 
@@ -35,7 +35,7 @@ static llvm::StringRef toString(TypeNode::Kind K) {
   return "Invalid";
 }
 
-void DependencyGraph::addNode(const model::Type *T) {
+void DependencyGraph::addNode(const model::TypeDefinition *T) {
 
   constexpr auto TypeName = TypeNode::Kind::TypeName;
   auto *NameNode = GenericGraph::addNode(TypeNode{ T, TypeName });
@@ -126,7 +126,7 @@ getDependencyFor(const model::QualifiedType &QT,
   return TypeToNode.at({ Unqualified, K });
 }
 
-static void registerDependencies(const model::Type *T,
+static void registerDependencies(const model::TypeDefinition *T,
                                  const TypeToDependencyNodeMap &TypeToNode) {
 
   using Edge = std::pair<TypeDependencyNode *, TypeDependencyNode *>;
@@ -134,11 +134,11 @@ static void registerDependencies(const model::Type *T,
 
   switch (T->Kind()) {
 
-  case model::TypeKind::Invalid: {
+  case model::TypeDefinitionKind::Invalid: {
     revng_abort("Primitive or Invalid type should never depend on others");
   } break;
 
-  case model::TypeKind::PrimitiveType: {
+  case model::TypeDefinitionKind::PrimitiveDefinition: {
     // Nothing to do here. Primitive types names and full definitions can
     // always be defined without dependencies, because they are either not
     // necessary (for primitive types that are already present in stdint.h)
@@ -147,7 +147,7 @@ static void registerDependencies(const model::Type *T,
     // full definition.
   } break;
 
-  case model::TypeKind::EnumType: {
+  case model::TypeDefinitionKind::EnumDefinition: {
     // Enum names and full definitions could always be conjured out of thin
     // air. However, given that we have enums with underlying primitive
     // types, for consistency we enforce that enums names and full
@@ -157,12 +157,13 @@ static void registerDependencies(const model::Type *T,
     // definitions of primitive types can also always be conjured out of
     // thin air, so we're always sure that this does not generates infinite
     // loops.
-    const auto *E = cast<model::EnumType>(T);
+    const auto *E = cast<model::EnumDefinition>(T);
     const model::QualifiedType &UnderlyingQT = E->UnderlyingType();
     revng_assert(T->edges().size() == 1 and UnderlyingQT == *T->edges().begin()
                  and UnderlyingQT.Qualifiers().empty());
 
-    auto *U = cast<model::PrimitiveType>(UnderlyingQT.UnqualifiedType().get());
+    auto *Unqualified = UnderlyingQT.UnqualifiedType().get();
+    auto *U = cast<model::PrimitiveDefinition>(Unqualified);
     auto *EnumName = TypeToNode.at({ E, TypeNode::Kind::TypeName });
     auto *EnumFull = TypeToNode.at({ E, TypeNode::Kind::FullType });
     auto *UnderFull = TypeToNode.at({ U, TypeNode::Kind::FullType });
@@ -176,8 +177,8 @@ static void registerDependencies(const model::Type *T,
                 << " depends on " << getNodeLabel(UnderFull));
   } break;
 
-  case model::TypeKind::StructType:
-  case model::TypeKind::UnionType: {
+  case model::TypeDefinitionKind::StructDefinition:
+  case model::TypeDefinitionKind::UnionDefinition: {
     // Struct and Union names can always be conjured out of thin air thanks to
     // typedefs. So we only need to add dependencies between their full
     // definition and the full definition of their fields.
@@ -190,9 +191,9 @@ static void registerDependencies(const model::Type *T,
     }
   } break;
 
-  case model::TypeKind::TypedefType: {
+  case model::TypeDefinitionKind::TypedefDefinition: {
     // Typedefs are nasty.
-    auto *TD = cast<model::TypedefType>(T);
+    auto *TD = cast<model::TypedefDefinition>(T);
     const model::QualifiedType &Underlying = TD->UnderlyingType();
 
     auto *TDName = TypeToNode.at({ TD, TypeNode::Kind::TypeName });
@@ -210,8 +211,8 @@ static void registerDependencies(const model::Type *T,
               getNodeLabel(TDFull) << " depends on " << getNodeLabel(FullDep));
   } break;
 
-  case model::TypeKind::CABIFunctionType:
-  case model::TypeKind::RawFunctionType: {
+  case model::TypeDefinitionKind::CABIFunctionDefinition:
+  case model::TypeDefinitionKind::RawFunctionDefinition: {
     // For function types we can print a valid typedef definition as long as
     // we have visibility on all the names of all the argument types and all
     // return types.
@@ -267,11 +268,11 @@ DependencyGraph buildDependencyGraph(const TypeVector &Types) {
   DependencyGraph Dependencies;
 
   // Create nodes
-  for (const UpcastablePointer<model::Type> &MT : Types)
+  for (const model::UpcastableTypeDefinition &MT : Types)
     Dependencies.addNode(MT.get());
 
   // Compute dependencies and add them to the graph
-  for (const UpcastablePointer<model::Type> &MT : Types)
+  for (const model::UpcastableTypeDefinition &MT : Types)
     registerDependencies(MT.get(), Dependencies.TypeNodes());
 
   if (Log.isEnabled())

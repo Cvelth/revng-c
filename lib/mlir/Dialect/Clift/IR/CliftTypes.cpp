@@ -6,7 +6,7 @@
 
 #include "revng-c/mlir/Dialect/Clift/IR/CliftTypes.h"
 // keep this order
-#include "revng/Model/PrimitiveType.h"
+#include "revng/Model/PrimitiveDefinition.h"
 
 #include "revng-c/mlir/Dialect/Clift/IR/CliftAttributes.h"
 
@@ -45,22 +45,21 @@ void mlir::clift::CliftDialect::printType(::mlir::Type Type,
     return;
 }
 
-static constexpr model::PrimitiveType::PrimitiveKindType
+static constexpr model::PrimitiveKind::Values
 kindToKind(mlir::clift::PrimitiveKind kind) {
-  return static_cast<model::PrimitiveType::PrimitiveKindType>(kind);
+  return static_cast<model::PrimitiveKind::Values>(kind);
 }
 
-using Primitive = model::PrimitiveType::PrimitiveKindType;
-using namespace mlir::clift;
-static_assert(Primitive::Float == kindToKind(PrimitiveKind::FloatKind));
-static_assert(Primitive::Void == kindToKind(PrimitiveKind::VoidKind));
-static const auto
-  PointerOrNumber = kindToKind(PrimitiveKind::PointerOrNumberKind);
-static_assert(Primitive::PointerOrNumber == PointerOrNumber);
-static_assert(Primitive::Unsigned == kindToKind(PrimitiveKind::UnsignedKind));
-static_assert(Primitive::Generic == kindToKind(PrimitiveKind::GenericKind));
-static_assert(Primitive::Signed == kindToKind(PrimitiveKind::SignedKind));
-static_assert(Primitive::Number == kindToKind(PrimitiveKind::NumberKind));
+using ModelP = model::PrimitiveKind::Values;
+using CliftP = mlir::clift::PrimitiveKind;
+static_assert(ModelP::Float == kindToKind(CliftP::FloatKind));
+static_assert(ModelP::Void == kindToKind(CliftP::VoidKind));
+static constexpr auto PointerOrNumber = kindToKind(CliftP::PointerOrNumberKind);
+static_assert(ModelP::PointerOrNumber == PointerOrNumber);
+static_assert(ModelP::Unsigned == kindToKind(CliftP::UnsignedKind));
+static_assert(ModelP::Generic == kindToKind(CliftP::GenericKind));
+static_assert(ModelP::Signed == kindToKind(CliftP::SignedKind));
+static_assert(ModelP::Number == kindToKind(CliftP::NumberKind));
 
 using LoggerType = llvm::function_ref<mlir::InFlightDiagnostic()>;
 mlir::LogicalResult
@@ -69,7 +68,7 @@ mlir::clift::PrimitiveType::verify(LoggerType logger,
                                    unsigned long size,
                                    BoolAttr IsConst) {
 
-  model::PrimitiveType Type(kindToKind(kind), size);
+  model::PrimitiveDefinition Type(kindToKind(kind), size);
   if (not Type.verify()) {
     return logger() << "primitive type verify failed";
   }
@@ -90,7 +89,7 @@ std::string mlir::clift::DefinedType::getAlias() const {
 }
 
 std::string mlir::clift::PrimitiveType::getAlias() const {
-  model::PrimitiveType Type(kindToKind(getKind()), getByteSize());
+  model::PrimitiveDefinition Type(kindToKind(getKind()), getByteSize());
   return isConst() ? std::string("const_") + serializeToString(Type.name()) :
                      serializeToString(Type.name());
 }
@@ -135,23 +134,25 @@ uint64_t mlir::clift::FunctionAttr::getByteSize() const {
   return 0;
 }
 
+using CliftPointer = mlir::clift::PointerType;
 ::mlir::LogicalResult
-PointerType::verify(::llvm::function_ref<::mlir::InFlightDiagnostic()>
-                      emitError,
-                    mlir::clift::ValueType element_type,
-                    uint64_t pointer_size,
-                    BoolAttr IsConst) {
+CliftPointer::verify(::llvm::function_ref<::mlir::InFlightDiagnostic()>
+                       emitError,
+                     mlir::clift::ValueType element_type,
+                     uint64_t pointer_size,
+                     BoolAttr IsConst) {
   if (pointer_size == 0) {
     return emitError() << "pointer type cannot have size zero";
   }
   return mlir::success();
 }
 
+using CliftArray = mlir::clift::ArrayType;
 ::mlir::LogicalResult
-ArrayType::verify(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError,
-                  mlir::clift::ValueType element_type,
-                  uint64_t count,
-                  BoolAttr IsConst) {
+CliftArray::verify(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError,
+                   mlir::clift::ValueType element_type,
+                   uint64_t count,
+                   BoolAttr IsConst) {
   if (count == 0) {
     return emitError() << "array type cannot have zero elements";
   }
@@ -238,10 +239,10 @@ EnumAttr::verify(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError,
 
   return mlir::success();
 }
-void UnionType::walkImmediateSubElements(function_ref<void(Attribute)>
-                                           walkAttrsFn,
-                                         function_ref<void(Type)> walkTypesFn)
-  const {
+void UnionDefinition::walkImmediateSubElements(function_ref<void(Attribute)>
+                                                 walkAttrsFn,
+                                               function_ref<void(Type)>
+                                                 walkTypesFn) const {
   if (not getImpl()->isInitialized())
     return;
   for (auto field : getImpl()->getFields())
@@ -249,19 +250,17 @@ void UnionType::walkImmediateSubElements(function_ref<void(Attribute)>
 }
 
 mlir::Attribute
-UnionType::replaceImmediateSubElements(llvm::ArrayRef<mlir::Attribute>
-                                         replAttrs,
-                                       llvm::ArrayRef<mlir::Type> replTypes)
-  const {
+UnionDefinition::replaceImmediateSubElements(llvm::ArrayRef<mlir::Attribute>,
+                                             llvm::ArrayRef<mlir::Type>) const {
   revng_assert("it does not make any sense to replace the elements of a "
                "defined Union");
   return {};
 }
 
-void StructType::walkImmediateSubElements(function_ref<void(Attribute)>
-                                            walkAttrsFn,
-                                          function_ref<void(Type)> walkTypesFn)
-  const {
+void StructDefinition::walkImmediateSubElements(function_ref<void(Attribute)>
+                                                  walkAttrsFn,
+                                                function_ref<void(Type)>
+                                                  walkTypesFn) const {
   if (not getImpl()->isInitialized())
     return;
   for (auto field : getImpl()->getFields())
@@ -269,9 +268,8 @@ void StructType::walkImmediateSubElements(function_ref<void(Attribute)>
 }
 
 mlir::Attribute
-StructType::replaceImmediateSubElements(llvm::ArrayRef<mlir::Attribute>
-                                          replAttrs,
-                                        llvm::ArrayRef<mlir::Type> replTypes)
+StructDefinition::replaceImmediateSubElements(llvm::ArrayRef<mlir::Attribute>,
+                                              llvm::ArrayRef<mlir::Type>)
   const {
   revng_assert("it does not make any sense to replace the elements of a "
                "defined struct");

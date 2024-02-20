@@ -30,8 +30,8 @@ namespace mlir::clift {
 // discourse.llvm.org/t/custom-walk-and-replace-for-non-tablegen-types/74229
 // This is very brittle and it is very likely that it will change again in
 // future llvm releases
-class StructType
-  : public ::mlir::Attribute::AttrBase<StructType,
+class StructDefinition
+  : public ::mlir::Attribute::AttrBase<StructDefinition,
                                        Attribute,
                                        StructTypeStorage,
                                        SubElementAttrInterface::Trait,
@@ -42,15 +42,15 @@ class StructType
 public:
   using Base::Base;
 
-  static StructType get(MLIRContext *ctx, uint64_t ID) {
+  static StructDefinition get(MLIRContext *ctx, uint64_t ID) {
     return Base::get(ctx, ID);
   }
 
-  static StructType get(MLIRContext *ctx,
-                        uint64_t ID,
-                        llvm::StringRef Name,
-                        uint64_t Size,
-                        llvm::ArrayRef<FieldAttr> Fields) {
+  static StructDefinition get(MLIRContext *ctx,
+                              uint64_t ID,
+                              llvm::StringRef Name,
+                              uint64_t Size,
+                              llvm::ArrayRef<FieldAttr> Fields) {
     auto Result = Base::get(ctx, ID);
     Result.setBody(Name, Size, Fields);
     return Result;
@@ -104,27 +104,28 @@ public:
                                         ArrayRef<Type> replTypes) const;
 };
 
-class UnionType : public Attribute::AttrBase<UnionType,
-                                             Attribute,
-                                             UnionTypeStorage,
-                                             SubElementAttrInterface::Trait,
-                                             SizedType::Trait,
-                                             TypeDefinition::Trait,
-                                             AliasableAttr::Trait,
-                                             AttributeTrait::IsMutable> {
+class UnionDefinition
+  : public Attribute::AttrBase<UnionDefinition,
+                               Attribute,
+                               UnionTypeStorage,
+                               SubElementAttrInterface::Trait,
+                               SizedType::Trait,
+                               TypeDefinition::Trait,
+                               AliasableAttr::Trait,
+                               AttributeTrait::IsMutable> {
 public:
   using Base::Base;
 
-  static UnionType get(MLIRContext *ctx, uint64_t ID) {
+  static UnionDefinition get(MLIRContext *ctx, uint64_t ID) {
     // Call into the base to get a uniqued instance of this type. The parameter
     // (name) is passed after the context.
     return Base::get(ctx, ID);
   }
 
-  static UnionType get(MLIRContext *ctx,
-                       uint64_t ID,
-                       llvm::StringRef Name,
-                       llvm::ArrayRef<FieldAttr> Fields) {
+  static UnionDefinition get(MLIRContext *ctx,
+                             uint64_t ID,
+                             llvm::StringRef Name,
+                             llvm::ArrayRef<FieldAttr> Fields) {
     // Call into the base to get a uniqued instance of this type. The parameter
     // (name) is passed after the context.
     auto Result = Base::get(ctx, ID);

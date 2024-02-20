@@ -11,7 +11,7 @@
 
 #include "revng/Model/Architecture.h"
 #include "revng/Model/Binary.h"
-#include "revng/Model/Type.h"
+#include "revng/Model/TypeDefinition.h"
 #include "revng/Support/FunctionTags.h"
 
 #include "revng-c/Support/FunctionTags.h"

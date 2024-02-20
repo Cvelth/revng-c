@@ -16,7 +16,7 @@
 
 #include "revng/Model/Binary.h"
 #include "revng/Model/Helpers.h"
-#include "revng/Model/Type.h"
+#include "revng/Model/TypeDefinition.h"
 #include "revng/Pipeline/Location.h"
 #include "revng/Support/Assert.h"
 #include "revng/Support/Debug.h"
@@ -35,7 +35,8 @@
 using llvm::isa;
 
 using QualifiedTypeNameMap = std::map<model::QualifiedType, std::string>;
-using TypeToNumOfRefsMap = std::unordered_map<const model::Type *, unsigned>;
+using TypeToNumOfRefsMap = std::unordered_map<const model::TypeDefinition *,
+                                              unsigned>;
 using GraphInfo = TypeInlineHelper::GraphInfo;
 
 static Logger<> Log{ "model-to-header" };
@@ -49,8 +50,8 @@ static void printSegmentsTypes(const model::Segment &Segment,
   if (Segment.Type().empty()) {
     // If the segment has not type, we emit it as an array of bytes.
     const model::Binary *Model = Segment.Type().getRoot();
-    model::TypePath
-      Byte = Model->getPrimitiveType(model::PrimitiveTypeKind::Generic, 1);
+    model::TypeDefinitionPath
+      Byte = Model->getPrimitiveType(model::PrimitiveKind::Generic, 1);
     model::Qualifier Array = model::Qualifier::createArray(Segment
                                                              .VirtualSize());
     SegmentType = model::QualifiedType{ Byte, { Array } };
@@ -68,11 +69,11 @@ static void printTypeDefinitions(const model::Binary &Model,
                                  ptml::PTMLCBuilder &B,
                                  QualifiedTypeNameMap &AdditionalTypeNames,
                                  const ModelToHeaderOptions &Options) {
-  std::set<const model::Type *> StackTypes, EmptyInlineTypes;
+  std::set<const model::TypeDefinition *> StackTypes, EmptyInlineTypes;
   if (not Options.DisableTypeInlining)
     StackTypes = TheTypeInlineHelper.collectStackTypes(Model);
 
-  DependencyGraph Dependencies = buildDependencyGraph(Model.Types());
+  DependencyGraph Dependencies = buildDependencyGraph(Model.TypeDefinitions());
   const auto &TypeNodes = Dependencies.TypeNodes();
   auto &ToInline = Options.DisableTypeInlining ?
                      EmptyInlineTypes :
@@ -102,7 +103,7 @@ static void printTypeDefinitions(const model::Binary &Model,
         }
       }
 
-      const model::Type *NodeT = Node->T;
+      const model::TypeDefinition *NodeT = Node->T;
       const auto DeclKind = Node->K;
       constexpr auto TypeName = TypeNode::Kind::TypeName;
       constexpr auto FullType = TypeNode::Kind::FullType;
@@ -129,7 +130,8 @@ static void printTypeDefinitions(const model::Binary &Model,
             and not ToInline.contains(NodeT)) {
           // For all inlinable types that we have seen them yet produce forward
           // declaration.
-          if ((isa<model::UnionType>(NodeT) or isa<model::StructType>(NodeT))
+          if ((isa<model::UnionDefinition>(NodeT)
+               or isa<model::StructDefinition>(NodeT))
               and not ToInline.contains(NodeT)) {
             auto TypesToInline = TheTypeInlineHelper
                                    .getTypesToInlineInTypeTy(Model, NodeT);
@@ -172,16 +174,16 @@ static void printTypeDefinitions(const model::Binary &Model,
 
         // For primitive types the forward declaration we emit is also a full
         // definition, so we need to keep track of this.
-        if (isa<model::PrimitiveType>(NodeT))
+        if (isa<model::PrimitiveDefinition>(NodeT))
           Defined.insert(TypeNodes.at({ NodeT, FullType }));
 
         // For struct, enums and unions the forward declaration is just a
         // forward declaration, without body.
 
-        // TypedefType, RawFunctionType and CABIFunctionType are emitted in C
-        // as typedefs, so they don't represent fully defined types, but just
-        // names, unless all the types they depend from are also fully
-        // defined, but that happens when DeclKind == FullType, not here.
+        // TypedefDefinition, RawFunctionDefinition and CABIFunctionDefinition
+        // are emitted in C as typedefs, so they don't represent fully defined
+        // types, but just names, unless all the types they depend from are also
+        // fully defined, but that happens when DeclKind == FullType, not here.
       }
     }
     revng_log(Log, "====== PostOrder DONE");
@@ -216,7 +218,7 @@ bool dumpModelToHeader(const model::Binary &Model,
            << B.getNullTag() << " (" << B.getZeroTag() << ")\n"
            << B.getDirective(PTMLCBuilder::Directive::EndIf) << "\n";
 
-    if (not Model.Types().empty()) {
+    if (not Model.TypeDefinitions().empty()) {
       auto Foldable = B.getScope(Scopes::TypeDeclarations)
                         .scope(Out,
                                /* Newline */ true);
@@ -248,7 +250,7 @@ bool dumpModelToHeader(const model::Binary &Model,
         if (Options.FunctionsToOmit.contains(MF.Entry()))
           continue;
 
-        const model::Type *FT = MF.prototype(Model).get();
+        const model::TypeDefinition *FT = MF.prototype(Model).get();
         if (Options.TypesToOmit.contains(FT))
           continue;
 
@@ -279,7 +281,7 @@ bool dumpModelToHeader(const model::Binary &Model,
       Header << '\n';
       for (const model::DynamicFunction &MF :
            Model.ImportedDynamicFunctions()) {
-        const model::Type *FT = MF.prototype(Model).get();
+        const model::TypeDefinition *FT = MF.prototype(Model).get();
         revng_assert(FT != nullptr);
         if (Options.TypesToOmit.contains(FT))
           continue;

@@ -16,7 +16,7 @@
 #include "revng/EarlyFunctionAnalysis/FunctionMetadataCache.h"
 #include "revng/Model/IRHelpers.h"
 #include "revng/Model/LoadModelPass.h"
-#include "revng/Model/RawFunctionType.h"
+#include "revng/Model/RawFunctionDefinition.h"
 #include "revng/Pipeline/Location.h"
 #include "revng/Pipeline/RegisterLLVMPass.h"
 #include "revng/Pipes/Ranks.h"
@@ -159,7 +159,7 @@ static void adjustAnonymousStructs(Module &M, const model::Binary &Model) {
         and not FunctionTags.contains(FunctionTags::DynamicFunction))
       continue;
 
-    const model::Type *Prototype = nullptr;
+    const model::TypeDefinition *Prototype = nullptr;
     if (IsIsolated) {
       const model::Function *ModelFunc = llvmToModelFunction(Model, F);
       Prototype = ModelFunc->Prototype().getConst();

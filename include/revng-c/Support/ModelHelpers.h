@@ -11,7 +11,7 @@
 #include "revng/EarlyFunctionAnalysis/FunctionMetadataCache.h"
 #include "revng/Model/Binary.h"
 #include "revng/Model/QualifiedType.h"
-#include "revng/Model/Type.h"
+#include "revng/Model/TypeDefinition.h"
 #include "revng/Model/VerifyHelper.h"
 
 namespace llvm {
@@ -60,8 +60,9 @@ inline llvm::IntegerType *getPointerSizedInteger(llvm::LLVMContext &C,
 }
 
 /// Create a pointer to the given base Type
-inline model::QualifiedType createPointerTo(const model::TypePath &BaseT,
-                                            const model::Binary &Binary) {
+inline model::QualifiedType
+createPointerTo(const model::TypeDefinitionPath &BaseT,
+                const model::Binary &Binary) {
   using Qualifier = model::Qualifier;
 
   return model::QualifiedType{

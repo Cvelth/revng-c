@@ -457,7 +457,7 @@ private:
       // TODO: this is not very nice
       auto SymbolName = stripPrefix("dynamic_", OldFunction->getName()).str();
       auto &ImportedFunction = Binary.ImportedDynamicFunctions().at(SymbolName);
-      model::TypePath Prototype = ImportedFunction.prototype(Binary);
+      model::TypeDefinitionPath Prototype = ImportedFunction.prototype(Binary);
       auto [NewFunction, Layout] = recreateApplyingModelPrototype(OldFunction,
                                                                   Prototype);
     }
@@ -904,7 +904,7 @@ private:
     // Get stack size at call site
     auto MaybeStackSize = getSignedConstantArg(SSACSCall, 0);
 
-    // Obtain RawFunctionType
+    // Obtain RawFunctionDefinition
     auto Prototype = Cache.getCallSitePrototype(Binary,
                                                 SSACSCall,
                                                 &ModelFunction);
@@ -1377,7 +1377,7 @@ private:
     // Get stack frame size
     //
     std::optional<uint64_t> MaybeStackFrameSize;
-    if (const model::Type *T = ModelFunction.StackFrameType().get())
+    if (const model::TypeDefinition *T = ModelFunction.StackFrameType().get())
       MaybeStackFrameSize = T->size(VH);
 
     uint64_t StackFrameSize = MaybeStackFrameSize.value_or(0);
@@ -1433,7 +1433,7 @@ private:
 private:
   std::pair<llvm::Function *, abi::FunctionType::Layout>
   recreateApplyingModelPrototype(Function *OldFunction,
-                                 const model::TypePath &Prototype) {
+                                 const model::TypeDefinitionPath &Prototype) {
     using namespace abi::FunctionType;
     auto Layout = Layout::make(Prototype);
 
@@ -1495,7 +1495,7 @@ private:
 
     case ReturnMethod::Scalar: {
       // We either have a return value that fits in a single register, or it's
-      // CABIFunctionType returning stuff through registers
+      // CABIFunctionDefinition returning stuff through registers
       unsigned Bits = 0;
       for (const Layout::ReturnValue &ReturnValue : Layout.ReturnValues)
         Bits += ReturnValue.Type.size().value() * 8;
@@ -1503,7 +1503,8 @@ private:
     } break;
 
     case ReturnMethod::RegisterSet:
-      // We have a RawFunctionType returning things over multiple registers
+      // We have a RawFunctionDefinition returning things over multiple
+      // registers
       revng_assert(Layout.returnValueRegisterCount() > 1);
       ReturnType = OldReturnType;
       break;

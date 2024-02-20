@@ -27,7 +27,7 @@
 #include "Helpers.h"
 
 using namespace llvm;
-using model::RawFunctionType;
+using model::RawFunctionDefinition;
 
 static Logger<> Log("detect-stack-size");
 
@@ -82,7 +82,7 @@ static void setBound(BoundCollector<IsUpper> &BoundCollector, Value *V) {
 
 struct CallSite {
   std::optional<uint64_t> StackSize;
-  model::Type::Key CallType{};
+  model::TypeDefinition::Key CallType{};
 };
 
 class FunctionStackInfo {
@@ -101,9 +101,10 @@ class DetectStackSize {
 private:
   TupleTree<model::Binary> &Binary;
   std::vector<FunctionStackInfo> FunctionsStackInfo;
-  std::map<RawFunctionType *, UpperBoundCollector> FunctionTypeStackArguments;
+  std::map<RawFunctionDefinition *, UpperBoundCollector>
+    FunctionTypeStackArguments;
   const size_t CallInstructionPushSize = 0;
-  /// Helper for fast model::Type size computation
+  /// Helper for fast model::TypeDefinition size computation
   model::VerifyHelper VH;
 
 public:
@@ -134,7 +135,7 @@ public:
 
 private:
   void collectStackBounds(FunctionMetadataCache &Cache, Function &F);
-  void electStackArgumentsSize(RawFunctionType *Prototype,
+  void electStackArgumentsSize(RawFunctionDefinition *Prototype,
                                const UpperBoundCollector &Bound) const;
   void electFunctionStackFrameSize(FunctionStackInfo &FSI);
   std::optional<uint64_t> handleCallSite(const CallSite &CallSite);
@@ -153,11 +154,11 @@ void DetectStackSize::collectStackBounds(FunctionMetadataCache &Cache,
   // frame/arguments
   bool NeedsStackFrame = ModelFunction.StackFrameType().empty();
   bool NeedsStackArguments = false;
-  model::Type *Prototype = ModelFunction.prototype(*Binary).get();
+  model::TypeDefinition *Prototype = ModelFunction.prototype(*Binary).get();
 
-  // We only upgrade the stack size of RawFunctionType
-  RawFunctionType *RawPrototype = nullptr;
-  if ((RawPrototype = dyn_cast<RawFunctionType>(Prototype))) {
+  // We only upgrade the stack size of RawFunctionDefinition
+  RawFunctionDefinition *RawPrototype = nullptr;
+  if ((RawPrototype = dyn_cast<RawFunctionDefinition>(Prototype))) {
     NeedsStackArguments = RawPrototype->StackArgumentsType().empty();
   }
 
@@ -223,7 +224,7 @@ void DetectStackSize::collectStackBounds(FunctionMetadataCache &Cache,
 }
 
 using DSSI = DetectStackSize;
-void DSSI::electStackArgumentsSize(RawFunctionType *Prototype,
+void DSSI::electStackArgumentsSize(RawFunctionDefinition *Prototype,
                                    const UpperBoundCollector &Bound) const {
   revng_assert(Prototype->StackArgumentsType().empty());
   revng_assert(Bound.hasValue());
@@ -293,8 +294,8 @@ DetectStackSize::handleCallSite(const CallSite &CallSite) {
 
   using namespace abi::FunctionType;
   uint64_t StackArgumentSize = 0;
-  for (Layout::Argument &Argument :
-       Layout::make(*Binary->Types().at(CallSite.CallType).get()).Arguments) {
+  for (auto &Prototype = *Binary->TypeDefinitions().at(CallSite.CallType).get();
+       Layout::Argument & Argument : Layout::make(Prototype).Arguments) {
     if (Argument.Stack.has_value()) {
       StackArgumentSize = std::max(StackArgumentSize,
                                    Argument.Stack->Offset

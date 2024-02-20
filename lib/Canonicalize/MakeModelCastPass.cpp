@@ -83,7 +83,8 @@ MMCP::serializeTypesForModelCast(FunctionMetadataCache &Cache,
 
       // Aggregates that do not correspond to model structs (e.g. return types
       // of RawFunctionTypes that return more than one value) cannot be handled
-      // with casts, since we don't have a model::Type to cast them to.
+      // with casts, since we don't have a model::TypeDefinition to cast them
+      // to.
       if (ModelTypes.size() == 1) {
         QualifiedType ExpectedType = ModelTypes.back();
         revng_assert(ExpectedType.UnqualifiedType().isValid());
@@ -143,9 +144,9 @@ MMCP::serializeTypesForModelCast(FunctionMetadataCache &Cache,
 
       if (PtrOperandPtrType.isPointer()) {
         PtrOperandType = dropPointer(PtrOperandPtrType);
-        const auto *Unqualified = PtrOperandType.UnqualifiedType().getConst();
-        IsPtrOperandOfAggregateType = isa<model::StructType>(Unqualified)
-                                      || isa<model::UnionType>(Unqualified);
+        const auto *Unqual = PtrOperandType.UnqualifiedType().getConst();
+        IsPtrOperandOfAggregateType = isa<model::StructDefinition>(Unqual)
+                                      || isa<model::UnionDefinition>(Unqual);
       }
 
       if (isa<ConstantPointerNull>(SI->getPointerOperand())

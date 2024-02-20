@@ -51,7 +51,8 @@ public:
 class DLATypeSystemLLVMBuilder {
 public:
   using VisitedMapT = std::map<LayoutTypePtr, LayoutTypeSystemNode *>;
-  using PrototypesMapT = std::map<const model::Type *, FuncOrCallInst>;
+  using PrototypesMapT = std::map<const model::TypeDefinition *,
+                                  FuncOrCallInst>;
 
 private:
   /// Separate class that add `Instance` edges

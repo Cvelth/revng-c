@@ -25,8 +25,9 @@
 static thread_local std::map<uint64_t, mlir::Attribute> CurrentlyPrintedTypes;
 
 void mlir::clift::CliftDialect::registerAttributes() {
-  addAttributes<StructType, UnionType, /* Include the auto-generated clift types
-                                        */
+  addAttributes<StructDefinition, UnionDefinition,
+
+  /* Include the auto-generated clift types */
 #define GET_ATTRDEF_LIST
 #include "revng-c/mlir/Dialect/Clift/IR/CliftAttributes.cpp.inc"
                 /* End of types list */>();
@@ -103,11 +104,11 @@ mlir::clift::CliftDialect::parseAttribute(::mlir::DialectAsmParser &Parser,
   auto ParseResult = generatedAttributeParser(Parser, &Mnemonic, Type, GenAttr);
   if (ParseResult.has_value())
     return GenAttr;
-  if (Mnemonic == StructType::getMnemonic()) {
-    return StructType::parse(Parser);
+  if (Mnemonic == StructDefinition::getMnemonic()) {
+    return StructDefinition::parse(Parser);
   }
-  if (Mnemonic == UnionType::getMnemonic()) {
-    return UnionType::parse(Parser);
+  if (Mnemonic == UnionDefinition::getMnemonic()) {
+    return UnionDefinition::parse(Parser);
   }
 
   Parser.emitError(typeLoc) << "unknown  attr `" << Mnemonic << "` in dialect `"
@@ -122,11 +123,11 @@ void mlir::clift::CliftDialect::printAttribute(::mlir::Attribute Attr,
 
   if (::mlir::succeeded(generatedAttributePrinter(Attr, Printer)))
     return;
-  if (auto Casted = Attr.dyn_cast<StructType>()) {
+  if (auto Casted = Attr.dyn_cast<StructDefinition>()) {
     Casted.print(Printer);
     return;
   }
-  if (auto Casted = Attr.dyn_cast<UnionType>()) {
+  if (auto Casted = Attr.dyn_cast<UnionDefinition>()) {
     Casted.print(Printer);
     return;
   }
@@ -157,7 +158,7 @@ static mlir::Attribute printImpl(mlir::AsmPrinter &P, AttrType Attr) {
   P << ", name = ";
   P << "\"" << Attr.getName() << "\"";
   P << ", ";
-  if constexpr (std::is_same_v<AttrType, mlir::clift::StructType>) {
+  if constexpr (std::is_same_v<AttrType, mlir::clift::StructDefinition>) {
     P.printKeywordOrString("size");
     P << " = ";
     P << Attr.getByteSize();
@@ -169,11 +170,11 @@ static mlir::Attribute printImpl(mlir::AsmPrinter &P, AttrType Attr) {
   return Attr;
 }
 
-mlir::Attribute mlir::clift::UnionType::print(AsmPrinter &p) const {
+mlir::Attribute mlir::clift::UnionDefinition::print(AsmPrinter &p) const {
   return printImpl(p, *this);
 }
 
-mlir::Attribute mlir::clift::StructType::print(AsmPrinter &p) const {
+mlir::Attribute mlir::clift::StructDefinition::print(AsmPrinter &p) const {
   return printImpl(p, *this);
 }
 
@@ -242,7 +243,7 @@ AttrType parseImpl(mlir::AsmParser &parser, llvm::StringRef TypeName) {
   }
 
   uint64_t Size;
-  if constexpr (std::is_same_v<mlir::clift::StructType, AttrType>) {
+  if constexpr (std::is_same_v<mlir::clift::StructDefinition, AttrType>) {
     if (parser.parseKeyword("size").failed()) {
       return OnUnepxectedToken("keyword 'size'");
     }
@@ -291,7 +292,7 @@ AttrType parseImpl(mlir::AsmParser &parser, llvm::StringRef TypeName) {
   if (parser.parseGreater().failed()) {
     return OnUnepxectedToken(">");
   }
-  if constexpr (std::is_same_v<mlir::clift::StructType, AttrType>) {
+  if constexpr (std::is_same_v<mlir::clift::StructDefinition, AttrType>) {
     ToReturn.setBody(OptionalName, Size, *Attrs);
   } else {
     ToReturn.setBody(OptionalName, *Attrs);
@@ -299,29 +300,29 @@ AttrType parseImpl(mlir::AsmParser &parser, llvm::StringRef TypeName) {
   return ToReturn;
 }
 
-mlir::Attribute mlir::clift::UnionType::parse(AsmParser &parser) {
-  return parseImpl<UnionType>(parser, "union");
+mlir::Attribute mlir::clift::UnionDefinition::parse(AsmParser &parser) {
+  return parseImpl<UnionDefinition>(parser, "union");
 }
 
-mlir::Attribute mlir::clift::StructType::parse(AsmParser &parser) {
-  return parseImpl<StructType>(parser, "union");
+mlir::Attribute mlir::clift::StructDefinition::parse(AsmParser &parser) {
+  return parseImpl<StructDefinition>(parser, "union");
 }
 
 mlir::LogicalResult
-mlir::clift::StructType::verify(function_ref<InFlightDiagnostic()> emitError,
-                                uint64_t id) {
+mlir::clift::StructDefinition::verify(function_ref<InFlightDiagnostic()> Error,
+                                      uint64_t id) {
   return mlir::success();
 }
 
 mlir::LogicalResult
-mlir::clift::StructType::verify(function_ref<InFlightDiagnostic()> emitError,
-                                uint64_t ID,
-                                llvm::StringRef Name,
-                                uint64_t Size,
-                                llvm::ArrayRef<FieldAttr> Fields) {
+mlir::clift::StructDefinition::verify(function_ref<InFlightDiagnostic()> Error,
+                                      uint64_t ID,
+                                      llvm::StringRef Name,
+                                      uint64_t Size,
+                                      llvm::ArrayRef<FieldAttr> Fields) {
 
   if (Size == 0)
-    return emitError() << "struct type cannot have a size of zero";
+    return Error() << "struct type cannot have a size of zero";
 
   if (Fields.empty())
     return mlir::success();
@@ -334,9 +335,9 @@ mlir::clift::StructType::verify(function_ref<InFlightDiagnostic()> emitError,
                          .getByteSize();
     if (StructEnd >= second.getOffset()) {
 
-      return emitError() << "Fields of structs must be ordered by offset,  and "
-                            "they cannot "
-                            "overlap";
+      return Error() << "Fields of structs must be ordered by offset,  and "
+                        "they cannot "
+                        "overlap";
     }
   }
 
@@ -345,9 +346,9 @@ mlir::clift::StructType::verify(function_ref<InFlightDiagnostic()> emitError,
     mlir::clift::ValueType Casted = FieldType.cast<mlir::clift::ValueType>();
     if (auto FieldEndPoint = Field.getOffset() + Casted.getByteSize();
         FieldEndPoint >= Size) {
-      return emitError() << "offset + size of field of struct type is "
-                            "greater "
-                            "than the struct type size.";
+      return Error() << "offset + size of field of struct type is "
+                        "greater "
+                        "than the struct type size.";
     }
   }
 
@@ -356,8 +357,8 @@ mlir::clift::StructType::verify(function_ref<InFlightDiagnostic()> emitError,
     if (Field.getName().empty())
       continue;
     if (Names.contains(Field.getName())) {
-      return emitError() << "multiple definitions of struct field named "
-                         << Field.getName();
+      return Error() << "multiple definitions of struct field named "
+                     << Field.getName();
     }
     Names.insert(Field.getName());
   }
@@ -366,19 +367,19 @@ mlir::clift::StructType::verify(function_ref<InFlightDiagnostic()> emitError,
 }
 
 mlir::LogicalResult
-mlir::clift::UnionType::verify(function_ref<InFlightDiagnostic()> EmitError,
-                               uint64_t ID,
-                               llvm::StringRef Name,
-                               uint64_t Size,
-                               llvm::ArrayRef<FieldAttr> Fields) {
+mlir::clift::UnionDefinition::verify(function_ref<InFlightDiagnostic()> Error,
+                                     uint64_t ID,
+                                     llvm::StringRef Name,
+                                     uint64_t Size,
+                                     llvm::ArrayRef<FieldAttr> Fields) {
   if (Size == 0)
-    return EmitError() << "union type cannot have a size of zero";
+    return Error() << "union type cannot have a size of zero";
   if (Fields.size() != 0) {
-    return EmitError() << "union types must have at least a field";
+    return Error() << "union types must have at least a field";
   }
   for (auto Field : Fields) {
     if (Field.getOffset() != 0) {
-      return EmitError() << "union types offsets must be zero";
+      return Error() << "union types offsets must be zero";
     }
   }
   std::set<llvm::StringRef> Names;
@@ -386,8 +387,8 @@ mlir::clift::UnionType::verify(function_ref<InFlightDiagnostic()> EmitError,
     if (Field.getName().empty())
       continue;
     if (Names.contains(Field.getName())) {
-      return EmitError() << "multiple definitions of union field named "
-                         << Field.getName();
+      return Error() << "multiple definitions of union field named "
+                     << Field.getName();
     }
     Names.insert(Field.getName());
   }
