@@ -457,7 +457,7 @@ private:
       // TODO: this is not very nice
       auto SymbolName = stripPrefix("dynamic_", OldFunction->getName()).str();
       auto &ImportedFunction = Binary.ImportedDynamicFunctions().at(SymbolName);
-      model::TypeDefinitionPath Prototype = ImportedFunction.prototype(Binary);
+      model::TypeReference Prototype = ImportedFunction.prototype(Binary);
       auto [NewFunction, Layout] = recreateApplyingModelPrototype(OldFunction,
                                                                   Prototype);
     }
@@ -1433,7 +1433,7 @@ private:
 private:
   std::pair<llvm::Function *, abi::FunctionType::Layout>
   recreateApplyingModelPrototype(Function *OldFunction,
-                                 const model::TypeDefinitionPath &Prototype) {
+                                 const model::TypeReference &Prototype) {
     using namespace abi::FunctionType;
     auto Layout = Layout::make(Prototype);
 

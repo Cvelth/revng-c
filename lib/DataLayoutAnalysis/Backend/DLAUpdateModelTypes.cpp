@@ -652,7 +652,7 @@ fillStructWithRecoveredDLATypeAtOffset(model::Binary &Model,
     // struct as field at Offset.
     if (FieldsRemaining) {
       OriginalStruct->Fields()[Offset]
-        .Type() = model::QualifiedType(Model.getTypeDefinitionPath(NewU), {});
+        .Type() = model::QualifiedType(Model.getTypeReference(NewU), {});
     }
   } else {
     revng_abort();
@@ -733,7 +733,7 @@ bool dla::updateFuncSignatures(const llvm::Module &M,
     if (not ModelFunc)
       continue;
 
-    TypeDefinitionPath WrappedPrototypePath = ModelFunc->prototype(*Model);
+    TypeReference WrappedPrototypePath = ModelFunc->prototype(*Model);
     using model::QualifiedType;
     auto PrototypePath = QualifiedType::getFunctionType(WrappedPrototypePath);
     TypeDefinition *ModelPrototype = PrototypePath->get();
