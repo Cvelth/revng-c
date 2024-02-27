@@ -10,7 +10,6 @@
 #include "revng/ABI/FunctionType/Layout.h"
 #include "revng/EarlyFunctionAnalysis/FunctionMetadataCache.h"
 #include "revng/Model/Binary.h"
-#include "revng/Model/QualifiedType.h"
 #include "revng/Model/TypeDefinition.h"
 #include "revng/Model/VerifyHelper.h"
 
@@ -57,16 +56,6 @@ inline llvm::IntegerType *getPointerSizedInteger(llvm::LLVMContext &C,
                                                  const model::Binary &Binary) {
   const size_t PtrSize = getPointerSize(Binary.Architecture());
   return llvm::Type::getIntNTy(C, PtrSize * 8);
-}
-
-/// Create a pointer to the given base Type
-inline model::QualifiedType createPointerTo(const model::TypeReference &BaseT,
-                                            const model::Binary &Binary) {
-  using Qualifier = model::Qualifier;
-
-  return model::QualifiedType{
-    BaseT, { Qualifier::createPointer(Binary.Architecture()) }
-  };
 }
 
 /// Drops the last pointer qualifier from \a QT or, if this wraps a

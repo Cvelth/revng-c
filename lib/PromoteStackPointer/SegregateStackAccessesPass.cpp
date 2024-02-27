@@ -905,11 +905,11 @@ private:
     auto MaybeStackSize = getSignedConstantArg(SSACSCall, 0);
 
     // Obtain RawFunctionDefinition
-    auto Prototype = Cache.getCallSitePrototype(Binary,
-                                                SSACSCall,
-                                                &ModelFunction);
+    const auto *Prototype = Cache.getCallSitePrototype(Binary,
+                                                       SSACSCall,
+                                                       &ModelFunction);
     using namespace abi::FunctionType;
-    abi::FunctionType::Layout Layout = Layout::make(*Prototype.get());
+    abi::FunctionType::Layout Layout = Layout::make(*Prototype);
 
     // Find old call instruction
     CallInst *OldCall = findAssociatedCall(SSACSCall);

@@ -747,7 +747,7 @@ bool dla::updateFuncSignatures(const llvm::Module &M,
     for (const auto &Inst : LLVMFunc)
       if (const auto *I = llvm::dyn_cast<llvm::CallInst>(&Inst)) {
         auto Prototype = Cache.getCallSitePrototype(*Model.get(), I, ModelFunc);
-        if (not Prototype.empty()) {
+        if (Prototype != nullptr) {
           revng_log(Log,
                     "Updating prototype of indirect call "
                       << I->getNameOrAsOperand());

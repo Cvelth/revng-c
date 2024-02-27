@@ -57,9 +57,9 @@ usesNeedToBeReplacedWithCopiesFromLocal(const llvm::Instruction *I,
   if (not Call)
     return true;
 
-  auto Prototype = Cache.getCallSitePrototype(Model, cast<CallInst>(I));
+  const auto *Prototype = Cache.getCallSitePrototype(Model, cast<CallInst>(I));
   using namespace abi::FunctionType;
-  abi::FunctionType::Layout Layout = Layout::make(*Prototype.get());
+  abi::FunctionType::Layout Layout = Layout::make(*Prototype);
   // If the Isolated function doesn't return an aggregate, we have to
   // inject copies from local variables.
   if (Layout.returnMethod() != ReturnMethod::ModelAggregate)
@@ -177,9 +177,10 @@ bool AddAssignmentMarkersPass::runOnFunction(Function &F) {
         auto PtrSize = getPointerSize(Model->Architecture());
         revng_assert(ModelSize == PtrSize);
       } else if (ModelSize > IRSize) {
-        auto Prototype = Cache.getCallSitePrototype(*Model, cast<CallInst>(I));
+        const auto *Prototype = Cache.getCallSitePrototype(*Model,
+                                                           cast<CallInst>(I));
         using namespace abi::FunctionType;
-        abi::FunctionType::Layout Layout = Layout::make(*Prototype.get());
+        abi::FunctionType::Layout Layout = Layout::make(*Prototype);
         revng_assert(Layout.returnMethod() == ReturnMethod::ModelAggregate);
         if (Layout.hasSPTAR())
           revng_assert(0 == I->getNumUses());

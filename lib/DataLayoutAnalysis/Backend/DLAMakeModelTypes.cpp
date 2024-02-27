@@ -54,7 +54,7 @@ static QualifiedType createStructWrapper(const LTSN *N,
                                          uint64_t Offset = 0ULL,
                                          uint64_t WrapperSize = 0ULL) {
   // Create struct
-  auto [Struct, Path] = Model->makeTypeDefinition<model::StructDefinition>();
+  auto [Struct, NewType] = Model->makeStructDefinition();
 
   // Create and insert field in struct
   StructField Field{ Offset, {}, {}, {}, T };
@@ -86,7 +86,7 @@ static QualifiedType createStructWrapper(const LTSN *N,
 
   revng_assert(Struct.Size() and T.size().has_value()
                and Struct.Size() >= (T.size().value() + Offset));
-  return QualifiedType{ Path, {} };
+  return std::move(NewType);
 }
 
 /// Retrieve the model type associated to TypeSystem \a Node, if any
@@ -193,7 +193,7 @@ static QualifiedType makeStructFromNode(const LTSN *N,
   // Create struct
   revng_log(Log, "Creating struct type for node " << N->ID);
   LoggerIndent StructIndent{ Log };
-  auto [Struct, Path] = Model->makeTypeDefinition<model::StructDefinition>();
+  auto [Struct, NewType] = Model->makeStructDefinition();
   Struct.Size() = N->Size;
 
   // This holds the struct fields in the same order as in the model, so we can
@@ -250,7 +250,7 @@ static QualifiedType makeStructFromNode(const LTSN *N,
     }
   }
 
-  return QualifiedType{ Path, {} };
+  return std::move(NewType);
 }
 
 /// Create a union type from a TypeSystem node. For pointer members,
@@ -262,7 +262,7 @@ static QualifiedType makeUnionFromNode(const LTSN *N,
                                        const VectEqClasses &EqClasses) {
   // Create union
   revng_log(Log, "Creating union type for node " << N->ID);
-  auto [Union, Path] = Model->makeTypeDefinition<model::UnionDefinition>();
+  auto [Union, NewType] = Model->makeUnionDefinition();
 
   LoggerIndent StructIndent{ Log };
 
@@ -329,7 +329,7 @@ static QualifiedType makeUnionFromNode(const LTSN *N,
     }
   }
 
-  return QualifiedType{ Path, {} };
+  return std::move(NewType);
 }
 
 static QualifiedType &createNodeType(TupleTree<model::Binary> &Model,

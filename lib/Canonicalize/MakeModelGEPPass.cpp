@@ -37,7 +37,6 @@
 #include "revng/Model/Architecture.h"
 #include "revng/Model/Binary.h"
 #include "revng/Model/LoadModelPass.h"
-#include "revng/Model/Qualifier.h"
 #include "revng/Model/TypeDefinition.h"
 #include "revng/Model/TypeDefinitionKind.h"
 #include "revng/Model/VerifyHelper.h"
@@ -1831,7 +1830,7 @@ getAccessedTypeOnIR(FunctionMetadataCache &Cache,
       }
 
     } else if (isCallToIsolatedFunction(Call)) {
-      auto *ProtoT = Cache.getCallSitePrototype(Model, Call).get();
+      auto *ProtoT = Cache.getCallSitePrototype(Model, Call);
       revng_assert(ProtoT != nullptr);
 
       if (const auto *RFT = dyn_cast<RawFunctionDefinition>(ProtoT)) {

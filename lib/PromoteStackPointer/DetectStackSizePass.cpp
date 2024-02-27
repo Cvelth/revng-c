@@ -10,7 +10,6 @@
 #include "revng/EarlyFunctionAnalysis/FunctionMetadataCache.h"
 #include "revng/Model/IRHelpers.h"
 #include "revng/Model/LoadModelPass.h"
-#include "revng/Model/QualifiedType.h"
 #include "revng/Model/VerifyHelper.h"
 #include "revng/Pipeline/Context.h"
 #include "revng/Pipeline/LLVMContainer.h"
@@ -194,10 +193,10 @@ void DetectStackSize::collectStackBounds(FunctionMetadataCache &Cache,
               NewCallSite.StackSize = Offset->getLimitedValue();
 
             // Get the prototype
-            auto Proto = Cache.getCallSitePrototype(*Binary.get(),
-                                                    findAssociatedCall(Call),
-                                                    &ModelFunction);
-            NewCallSite.CallType = Proto.get()->key();
+            auto *ProtoT = Cache.getCallSitePrototype(*Binary.get(),
+                                                      findAssociatedCall(Call),
+                                                      &ModelFunction);
+            NewCallSite.CallType = ProtoT->key();
           }
         }
       }
@@ -242,7 +241,9 @@ void DSSI::electStackArgumentsSize(RawFunctionDefinition *Prototype,
     revng_log(Log,
               "electStackArgumentsSize for " << Prototype->ID() << ": "
                                              << Size);
-    Prototype->StackArgumentsType() = createEmptyStruct(*Binary.get(), Size);
+    using SD = model::StructDefinition;
+    auto [_, EmptyStruct] = Binary.get()->makeTypeDefinition<SD>(Size).second;
+    Prototype->StackArgumentsType() = std::move(EmptyStruct);
   }
 }
 
@@ -277,8 +278,9 @@ void DetectStackSize::electFunctionStackFrameSize(FunctionStackInfo &FSI) {
 
   if (StackSize and isValidStackSize(*StackSize)) {
     revng_log(Log, "Final StackSize: " << *StackSize);
-    ModelFunction.StackFrameType() = createEmptyStruct(*Binary.get(),
-                                                       *StackSize);
+    using SD = model::StructDefinition;
+    auto [_, Empty] = Binary.get()->makeTypeDefinition<SD>(*StackSize).second;
+    ModelFunction.StackFrameType() = std::move(Empty);
   }
 }
 

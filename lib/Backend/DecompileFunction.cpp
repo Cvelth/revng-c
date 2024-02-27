@@ -37,8 +37,6 @@
 #include "revng/Model/IRHelpers.h"
 #include "revng/Model/Identifier.h"
 #include "revng/Model/PrimitiveKind.h"
-#include "revng/Model/QualifiedType.h"
-#include "revng/Model/Qualifier.h"
 #include "revng/Model/RawFunctionDefinition.h"
 #include "revng/Model/Segment.h"
 #include "revng/Model/StructDefinition.h"
@@ -888,29 +886,25 @@ CCodeGenerator::getCustomOpcodeToken(const llvm::CallInst *Call) const {
   if (isCallToTagged(Call, FunctionTags::OpaqueExtractValue)) {
 
     const llvm::Value *AggregateOp = Call->getArgOperand(0);
-    const auto *Idx = llvm::cast<llvm::ConstantInt>(Call->getArgOperand(1));
+    const auto *I = llvm::cast<llvm::ConstantInt>(Call->getArgOperand(1));
 
     const auto *CallReturnsStruct = llvm::cast<llvm::CallInst>(AggregateOp);
     const llvm::Function *Callee = CallReturnsStruct->getCalledFunction();
-    const auto CalleePrototype = Cache.getCallSitePrototype(Model,
-                                                            CallReturnsStruct);
+    const auto *CalleePrototype = Cache.getCallSitePrototype(Model,
+                                                             CallReturnsStruct);
 
     std::string StructFieldRef;
-    if (CalleePrototype.empty()) {
+    if (not CalleePrototype) {
       // The call returning a struct is a call to a helper function.
       // It must be a direct call.
       revng_assert(Callee);
       StructFieldRef = getReturnStructFieldLocationReference(Callee,
-                                                             Idx
-                                                               ->getZExtValue(),
+                                                             I->getZExtValue(),
                                                              B);
     } else {
-      const model::TypeDefinition *CalleeType = CalleePrototype.getConst();
-      auto RFT = llvm::cast<const model::RawFunctionDefinition>(CalleeType);
-      uint64_t Index = Idx->getZExtValue();
-      StructFieldRef = std::next(RFT->ReturnValues().begin(), Index)
-                         ->name()
-                         .str();
+      auto RF = llvm::cast<const model::RawFunctionDefinition>(CalleePrototype);
+      uint64_t Idx = I->getZExtValue();
+      StructFieldRef = std::next(RF->ReturnValues().begin(), Idx)->name().str();
     }
 
     rc_return rc_recur getToken(AggregateOp) + "." + StructFieldRef;
@@ -982,7 +976,6 @@ CCodeGenerator::getIsolatedCallToken(const llvm::CallInst *Call) const {
   // Retrieve the CallEdge
   const auto &[CallEdge, _] = Cache.getCallEdge(Model, Call);
   revng_assert(CallEdge);
-  const auto &PrototypePath = Cache.getCallSitePrototype(Model, Call);
 
   // Construct the callee token (can be a function name or a function
   // pointer)
@@ -1021,7 +1014,7 @@ CCodeGenerator::getIsolatedCallToken(const llvm::CallInst *Call) const {
 
   // Build the call expression
   revng_assert(not CalleeToken.empty());
-  auto *Prototype = PrototypePath.get();
+  auto *Prototype = Cache.getCallSitePrototype(Model, Call);
   rc_return rc_recur getCallToken(Call, CalleeToken, Prototype);
 }
 
@@ -1738,10 +1731,9 @@ RecursiveCoroutine<void> CCodeGenerator::emitGHASTNode(const ASTNode *N) {
         // Create missing local variable declarations
         std::string VarName = createLocalVarDeclName(VarDeclCall);
         revng_assert(not VarName.empty());
-        const auto &Prototype = Cache.getCallSitePrototype(Model, VarDeclCall);
-        revng_assert(Prototype.isValid() and not Prototype.empty());
-        const auto *FunctionType = Prototype.getConst();
-        Out << getNamedInstanceOfReturnType(*FunctionType, VarName, B, false)
+        const auto *Prototype = Cache.getCallSitePrototype(Model, VarDeclCall);
+        revng_assert(Prototype != nullptr);
+        Out << getNamedInstanceOfReturnType(*Prototype, VarName, B, false)
             << ";\n";
       } else {
         revng_assert(not VarDeclCall->getType()->isAggregateType());

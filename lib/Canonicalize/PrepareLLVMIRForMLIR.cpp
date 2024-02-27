@@ -161,15 +161,12 @@ static void adjustAnonymousStructs(Module &M, const model::Binary &Model) {
 
     const model::TypeDefinition *Prototype = nullptr;
     if (IsIsolated) {
-      const model::Function *ModelFunc = llvmToModelFunction(Model, F);
-      Prototype = ModelFunc->Prototype().getConst();
+      Prototype = llvmToModelFunction(Model, F)->prototype();
     } else if (FunctionTags.contains(FunctionTags::DynamicFunction)) {
       llvm::StringRef SymbolName = F.getName().drop_front(strlen("dynamic_"));
       auto It = Model.ImportedDynamicFunctions().find(SymbolName.str());
       revng_assert(It != Model.ImportedDynamicFunctions().end());
-      const auto &TTR = It->prototype(Model);
-      revng_assert(TTR.isValid());
-      Prototype = TTR.getConst();
+      Prototype = It->prototype(Model);
     }
 
     revng_assert(Prototype);
@@ -187,9 +184,8 @@ static void adjustAnonymousStructs(Module &M, const model::Binary &Model) {
       auto *T = I.getType();
       CallInst *Call = getCallToIsolatedFunction(&I);
       if (Call != nullptr and T->isStructTy()) {
-        const auto &Prototype = *Cache.getCallSitePrototype(Model, Call).get();
-        auto
-          ReturnTypeName = getReturnTypeName(Prototype, B, false).str().str();
+        const auto &ProtoT = *Cache.getCallSitePrototype(Model, Call);
+        auto ReturnTypeName = getReturnTypeName(ProtoT, B, false).str().str();
         setStructNameIfNeeded(T, ReturnTypeName);
       }
     }

@@ -24,8 +24,6 @@
 #include "revng/Model/Binary.h"
 #include "revng/Model/CABIFunctionDefinition.h"
 #include "revng/Model/IRHelpers.h"
-#include "revng/Model/QualifiedType.h"
-#include "revng/Model/Qualifier.h"
 #include "revng/Model/RawFunctionDefinition.h"
 #include "revng/Model/TypedefDefinition.h"
 #include "revng/Support/Assert.h"
@@ -509,8 +507,10 @@ initModelTypesImpl(FunctionMetadataCache &Cache,
         auto *Called = Call->getCalledOperand();
         if (auto *CalledFunction = dyn_cast<llvm::Function>(Called)) {
           auto Prototype = Cache.getCallSitePrototype(Model, Call);
-          revng_assert(Prototype.isValid() and not Prototype.empty());
-          TypeMap.insert({ CalledFunction, createPointerTo(Prototype, Model) });
+          revng_assert(Prototype != nullptr);
+          auto Ptr = model::PointerType::make(Model.makeType(Prototype->key()),
+                                              Model.Architecture());
+          TypeMap.insert({ CalledFunction, std::move(Ptr) });
           continue;
         }
       }

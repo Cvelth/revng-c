@@ -21,8 +21,6 @@
 #include "revng/Model/Binary.h"
 #include "revng/Model/IRHelpers.h"
 #include "revng/Model/PrimitiveKind.h"
-#include "revng/Model/QualifiedType.h"
-#include "revng/Model/Qualifier.h"
 #include "revng/Model/RawFunctionDefinition.h"
 #include "revng/Support/Assert.h"
 #include "revng/Support/FunctionTags.h"
@@ -425,8 +423,8 @@ getStrongModelInfo(FunctionMetadataCache &Cache,
   if (auto *Call = dyn_cast<llvm::CallInst>(Inst)) {
 
     if (isCallToIsolatedFunction(Call)) {
-      auto Prototype = Cache.getCallSitePrototype(Model, Call);
-      revng_assert(Prototype.isValid() and not Prototype.empty());
+      const auto *Prototype = Cache.getCallSitePrototype(Model, Call);
+      revng_assert(Prototype != nullptr);
 
       // Isolated functions and dynamic functions have their prototype in the
       // model
@@ -508,7 +506,7 @@ getStrongModelInfo(FunctionMetadataCache &Cache,
   rc_return ReturnTypes;
 }
 
-llvm::SmallVector<QualifiedType>
+llvm::SmallVector<model::UpcastableType>
 getExpectedModelType(FunctionMetadataCache &Cache,
                      const llvm::Use *U,
                      const model::Binary &Model) {
@@ -524,12 +522,13 @@ getExpectedModelType(FunctionMetadataCache &Cache,
   if (auto *Call = dyn_cast<llvm::CallInst>(User)) {
     if (isCallToIsolatedFunction(Call)) {
       // Isolated functions have their prototype in the model
-      auto Prototype = Cache.getCallSitePrototype(Model, Call);
-      revng_assert(Prototype.isValid());
+      const auto *Prototype = Cache.getCallSitePrototype(Model, Call);
+      revng_assert(Prototype != nullptr);
 
       // If we are inspecting the callee return the prototype
       if (Call->isCallee(U))
-        return { createPointerTo(Prototype, Model) };
+        return { model::PointerType::make(Model->makeType(Prototype->key()),
+                                          Model->Architecture()) };
 
       if (Call->isArgOperand(U)) {
         const auto Layout = abi::FunctionType::Layout::make(Prototype);

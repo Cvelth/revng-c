@@ -92,10 +92,10 @@ bool RemoveExtractValues::runOnFunction(llvm::Function &F) {
     revng_assert(isa<CallInst>(I->getAggregateOperand()));
     auto *CallReturningAggregate = cast<CallInst>(I->getAggregateOperand());
     if (isCallToIsolatedFunction(CallReturningAggregate)) {
-      auto Prototype = Cache.getCallSitePrototype(*Model,
-                                                  CallReturningAggregate);
-      revng_assert(Prototype.get());
-      StructName = std::string(getReturnTypeName(*Prototype.get(), B, false));
+      auto *Prototype = Cache.getCallSitePrototype(*Model,
+                                                   CallReturningAggregate);
+      revng_assert(Prototype != nullptr);
+      StructName = std::string(getReturnTypeName(*Prototype, B, false));
     } else {
       // If it is not a isolated function, it must be a helper function.
       auto CalledFunction = CallReturningAggregate->getCalledFunction();
