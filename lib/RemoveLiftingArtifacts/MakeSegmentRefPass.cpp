@@ -207,7 +207,7 @@ bool MakeSegmentRefPass::runOnModule(Module &M) {
                                                           "AddressOf");
               model::QualifiedType SegmentQualifiedType;
               {
-                model::TypeReference SegmentTypePath = Model->Segments()
+                model::DefinitionReference SegmentTypePath = Model->Segments()
                                                          .at({ StartAddress,
                                                                VirtualSize })
                                                          .Type();
@@ -216,7 +216,7 @@ bool MakeSegmentRefPass::runOnModule(Module &M) {
                   // bytes.
                   const model::Binary *Model = SegmentTypePath.getRoot();
                   using model::PrimitiveKind::Generic;
-                  model::TypeReference Byte = Model->getPrimitiveType(Generic,
+                  model::DefinitionReference Byte = Model->getPrimitiveType(Generic,
                                                                       1);
                   model::Qualifier
                     Array = model::Qualifier::createArray(VirtualSize);

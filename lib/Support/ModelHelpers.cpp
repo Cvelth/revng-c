@@ -389,7 +389,7 @@ flattenReturnTypes(const abi::FunctionType::Layout &Layout,
 }
 
 static llvm::SmallVector<QualifiedType>
-handleReturnValue(const model::TypeReference &Prototype,
+handleReturnValue(const model::DefinitionReference &Prototype,
                   const model::Binary &Model) {
   const auto Layout = abi::FunctionType::Layout::make(Prototype);
 

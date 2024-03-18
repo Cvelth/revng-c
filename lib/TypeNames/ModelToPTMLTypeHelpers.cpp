@@ -100,10 +100,10 @@ TypeSet TypeInlineHelper::findTypesToInline(const model::Binary &Model,
 
   // A candidate for inline is the type IFF it was referenced only once.
   std::set<const model::TypeDefinition *> Result;
-  using TypeReferences = const pair<const model::TypeDefinition *, uint64_t>;
+  using DefinitionReferences = const pair<const model::TypeDefinition *, uint64_t>;
   for_each(Candidates.begin(),
            Candidates.end(),
-           [&Result, &ShouldIgnore](TypeReferences &TheType) {
+           [&Result, &ShouldIgnore](DefinitionReferences &TheType) {
              if (TheType.second == 1
                  and not ShouldIgnore.contains(TheType.first)) {
                Result.insert(TheType.first);
