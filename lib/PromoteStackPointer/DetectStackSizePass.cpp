@@ -149,14 +149,14 @@ void DetectStackSize::collectStackBounds(Function &F) {
 
   // Check if this function already has information about stack
   // frame/arguments
-  bool NeedsStackFrame = ModelFunction.StackFrameType().isEmpty();
+  bool NeedsStackFrame = ModelFunction.StackFrameType().empty();
   bool NeedsStackArguments = false;
   auto &Prototype = *Binary->prototypeOrDefault(ModelFunction.prototype());
 
   // We only upgrade the stack size of RawFunctionDefinition
   RawFunctionDefinition *RawPrototype = nullptr;
   if ((RawPrototype = llvm::dyn_cast<RawFunctionDefinition>(&Prototype)))
-    NeedsStackArguments = RawPrototype->StackArgumentsType().isEmpty();
+    NeedsStackArguments = RawPrototype->StackArgumentsType().empty();
 
   revng_log(Log, "NeedsStackFrame: " << NeedsStackFrame);
   revng_log(Log, "NeedsStackArguments: " << NeedsStackArguments);
@@ -221,7 +221,7 @@ void DetectStackSize::collectStackBounds(Function &F) {
 using DSSI = DetectStackSize;
 void DSSI::electStackArgumentsSize(RawFunctionDefinition &Prototype,
                                    const UpperBoundCollector &Bound) const {
-  revng_assert(Prototype.StackArgumentsType().isEmpty());
+  revng_assert(Prototype.StackArgumentsType().empty());
   revng_assert(Bound.hasValue());
 
   APInt Value = Bound.value();

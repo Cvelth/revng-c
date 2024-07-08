@@ -391,7 +391,7 @@ static void printFunctionPrototypeImpl(const FunctionType *Function,
   Header << (SingleLine ? " " : "\n");
   Header << getNamedInstanceOfReturnType(RF, FunctionName, B, false);
 
-  if (RF.Arguments().empty() and RF.StackArgumentsType().isEmpty()) {
+  if (RF.Arguments().empty() and RF.StackArgumentsType().empty()) {
     Header << "(" << B.tokenTag("void", ptml::c::tokens::Type) << ")";
   } else {
     const StringRef Open = "(";
@@ -417,7 +417,7 @@ static void printFunctionPrototypeImpl(const FunctionType *Function,
       Separator = Comma;
     }
 
-    if (not RF.StackArgumentsType().isEmpty()) {
+    if (not RF.StackArgumentsType().empty()) {
       // Add last argument representing a pointer to the stack arguments
       std::string StackArgName;
       if (Function != nullptr)

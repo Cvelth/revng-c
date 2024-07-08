@@ -86,7 +86,7 @@ static model::UpcastableType getNodeType(TupleTree<model::Binary> &Model,
   auto TypeIndex = EqClasses.getEqClassID(Node->ID);
   revng_assert(TypeIndex.has_value());
   revng_assert(TypeIndex.value() < Types.size());
-  revng_assert(not Types[TypeIndex.value()].isEmpty());
+  revng_assert(not Types[TypeIndex.value()].empty());
   return Types[TypeIndex.value()].copy();
 }
 
@@ -323,7 +323,7 @@ createNodeType(TupleTree<model::Binary> &Model,
   revng_assert(TypeIndex.has_value());
 
   model::UpcastableType &Result = Types[TypeIndex.value()];
-  revng_assert(Result.isEmpty());
+  revng_assert(Result.empty());
 
   if (isPointerNode(Node)) {
     // All pointer nodes are created as `void *` and they will be backpatched
@@ -375,7 +375,7 @@ createNodeType(TupleTree<model::Binary> &Model,
                 "types.");
   }
 
-  revng_assert(!Result.isEmpty());
+  revng_assert(!Result.empty());
   return Result;
 }
 

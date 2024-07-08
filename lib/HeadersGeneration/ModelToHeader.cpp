@@ -46,7 +46,7 @@ static void printSegmentsTypes(const model::Segment &Segment,
                                const ptml::PTMLCBuilder &B) {
   auto Location = B.getLocationDefinition(Segment);
 
-  if (Segment.Type().isEmpty()) {
+  if (Segment.Type().empty()) {
     // If the segment has not type, we emit it as an array of bytes.
     auto Array = model::ArrayType::make(model::PrimitiveType::makeGeneric(1),
                                         Segment.VirtualSize());

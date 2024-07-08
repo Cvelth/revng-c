@@ -85,7 +85,7 @@ bool TSBuilder::createInterproceduralTypes(llvm::Module &M,
     const auto *CABIFT = dyn_cast<model::CABIFunctionDefinition>(Prototype);
     if (RFT) {
       revng_assert(F.arg_size() == RFT->Arguments().size()
-                   or (not RFT->StackArgumentsType().isEmpty()
+                   or (not RFT->StackArgumentsType().empty()
                        and (F.arg_size() == RFT->Arguments().size() + 1)));
     } else if (CABIFT) {
       revng_assert(CABIFT->Arguments().size() == F.arg_size());

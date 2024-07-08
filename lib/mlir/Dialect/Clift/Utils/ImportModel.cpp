@@ -145,7 +145,7 @@ private:
     }
 
     clift::ValueType ReturnType = nullptr;
-    if (ModelType.ReturnType().isEmpty())
+    if (ModelType.ReturnType().empty())
       ReturnType = rc_recur fromType(*model::PrimitiveType::makeVoid());
     else
       ReturnType = rc_recur fromType(*ModelType.ReturnType());
@@ -225,7 +225,7 @@ private:
     clift::FunctionArgumentAttr StackArgument;
     size_t ArgumentsCount = 0;
 
-    if (not ModelType.StackArgumentsType().isEmpty()) {
+    if (not ModelType.StackArgumentsType().empty()) {
       const auto Type = rc_recur fromType(*ModelType.StackArgumentsType());
       if (not Type)
         rc_return nullptr;

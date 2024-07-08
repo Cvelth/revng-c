@@ -498,7 +498,7 @@ static void printCABIFunctionWrappers(const model::CABIFunctionDefinition *F,
                                       ptml::PTMLIndentedOstream &Header,
                                       ptml::PTMLCBuilder &B,
                                       TypeNameMap &NamesCache) {
-  if (not F->ReturnType().isEmpty())
+  if (not F->ReturnType().empty())
     if (auto *Array = F->ReturnType()->getArray())
       generateArrayWrapper(*Array, Header, B, NamesCache);
 

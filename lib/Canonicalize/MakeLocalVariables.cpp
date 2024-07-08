@@ -86,18 +86,18 @@ bool MakeLocalVariables::runOnFunction(llvm::Function &F) {
     llvm::Type *ResultType = Alloca->getType();
 
     // Compute the allocated type for the alloca
-    model::UpcastableType AllocatedType = model::UpcastableType::empty();
+    model::UpcastableType AllocatedType = model::UpcastableType::makeEmpty();
     for (const llvm::Use &U : Alloca->uses()) {
       if (auto *Store = dyn_cast<llvm::StoreInst>(U.getUser())) {
         if (Store->getPointerOperandIndex() == U.getOperandNo()) {
           llvm::Value *Stored = Store->getValueOperand();
           auto It = KnownTypes.find(Stored);
           if (It != KnownTypes.end()) {
-            if (AllocatedType.isEmpty()) {
+            if (AllocatedType.empty()) {
               AllocatedType = It->second.copy();
             } else if (*AllocatedType != *It->second) {
               // Found multiple possible types, relying on a fallback instead.
-              AllocatedType = model::UpcastableType::empty();
+              AllocatedType = model::UpcastableType::makeEmpty();
               break;
             }
           }
@@ -105,9 +105,9 @@ bool MakeLocalVariables::runOnFunction(llvm::Function &F) {
       }
     }
 
-    if (AllocatedType.isEmpty())
+    if (AllocatedType.empty())
       AllocatedType = llvmIntToModelType(Alloca->getAllocatedType(), *Model);
-    revng_assert(!AllocatedType.isEmpty() && AllocatedType->verify());
+    revng_assert(!AllocatedType.empty() && AllocatedType->verify());
 
     llvm::Constant *ModelTypeString = serializeToLLVMString(AllocatedType, M);
     auto LocalVarLLVMType = llvm::IntegerType::get(LLVMCtx,

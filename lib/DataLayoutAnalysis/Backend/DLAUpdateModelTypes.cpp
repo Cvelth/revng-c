@@ -83,7 +83,7 @@ static bool updateArgumentTypes(model::Binary &Model,
   // TODO: investigate if this should be migrated to using
   //       `fillStructWithRecoveredDLATypeAtOffset` like we do for segment and
   //       stack types.
-  if (not ModelPrototype.StackArgumentsType().isEmpty()) {
+  if (not ModelPrototype.StackArgumentsType().empty()) {
     revng_log(Log, "Updating stack argument");
     auto *ModelStackStruct = ModelPrototype.stackArgumentsType();
     revng_assert(not LLVMArgs.empty());
@@ -104,7 +104,7 @@ static bool updateArgumentTypes(model::Binary &Model,
       if (auto NewTypeIt = DLATypes.find(Key); NewTypeIt != DLATypes.end()) {
         using namespace model;
         const model::UpcastableType &DLAStackType = NewTypeIt->second;
-        revng_assert(!DLAStackType.isEmpty() && DLAStackType->size());
+        revng_assert(!DLAStackType.empty() && DLAStackType->size());
         uint64_t DLAStackSize = *DLAStackType->size();
 
         if (auto *DLAStackStruct = DLAStackType->getStruct()) {
@@ -293,10 +293,10 @@ static bool updateReturnType(model::Binary &Model,
   // If the return type is void there's nothing to do.
   if (LLVMRetType->isVoidTy()) {
     revng_log(Log, "Is void");
-    revng_assert(ModelReturnType.isEmpty());
+    revng_assert(ModelReturnType.empty());
     return false;
   } else {
-    revng_assert(!ModelReturnType.isEmpty());
+    revng_assert(!ModelReturnType.empty());
   }
 
   if (ModelReturnType->isScalar()) {
@@ -644,7 +644,7 @@ static bool updateStackFrameType(model::Function &ModelFunc,
                                  model::Binary &Model) {
   bool Updated = false;
 
-  if (ModelFunc.StackFrameType().isEmpty())
+  if (ModelFunc.StackFrameType().empty())
     return Updated;
 
   auto &OldStackFrame = *ModelFunc.stackFrameType();
@@ -746,7 +746,7 @@ bool dla::updateSegmentsTypes(const llvm::Module &M,
     auto Segment = Model->Segments().at({ StartAddress, VirtualSize });
 
     // If the Segment type is missing, we have nothing to update.
-    if (Segment.Type().isEmpty())
+    if (Segment.Type().empty())
       continue;
 
     // We know that the Segment's type is of StructDefinition.

@@ -198,7 +198,7 @@ parseEnumUnderlyingType(llvm::StringRef Annotate) {
 model::UpcastableType
 DeclVisitor::getEnumUnderlyingType(const std::string &TypeName) {
   auto R = model::PrimitiveType::fromCName(TypeName);
-  if (R.isEmpty())
+  if (R.empty())
     revng_log(Log, "An enum with a non-primitive underlying type.");
 
   return R;
@@ -218,7 +218,7 @@ DeclVisitor::makePrimitive(const BuiltinType *UnderlyingBuiltin,
                                  "model::PrimitiveType instead";
     Error = { ErrorMessage, CurrentLineNumber, CurrentColumnNumber };
 
-    return model::UpcastableType::empty();
+    return model::UpcastableType::makeEmpty();
   }
 
   while (auto Typedef = AsElaboratedType->getAs<TypedefType>()) {
@@ -229,14 +229,14 @@ DeclVisitor::makePrimitive(const BuiltinType *UnderlyingBuiltin,
   }
 
   std::string TypeName = AsElaboratedType->getNamedType().getAsString();
-  if (model::PrimitiveType::fromCName(TypeName).isEmpty()) {
+  if (model::PrimitiveType::fromCName(TypeName).empty()) {
     std::string ErrorMessage = "revng: `"
                                + AsElaboratedType->getNamedType().getAsString()
                                + "`, please use a revng model::PrimitiveType "
                                  "instead";
     Error = { ErrorMessage, CurrentLineNumber, CurrentColumnNumber };
 
-    return model::UpcastableType::empty();
+    return model::UpcastableType::makeEmpty();
   }
 
   switch (UnderlyingBuiltin->getKind()) {
@@ -300,7 +300,7 @@ DeclVisitor::makePrimitive(const BuiltinType *UnderlyingBuiltin,
     revng_log(Log, "Unable to handle a primitive type");
   }
 
-  return model::UpcastableType::empty();
+  return model::UpcastableType::makeEmpty();
 }
 
 template<NonBaseDerived<model::TypeDefinition> T>
@@ -327,7 +327,7 @@ model::UpcastableType DeclVisitor::makeTypeByNameOrID(llvm::StringRef Name) {
     }
   }
 
-  return model::UpcastableType::empty();
+  return model::UpcastableType::makeEmpty();
 }
 
 model::UpcastableType
@@ -342,7 +342,7 @@ DeclVisitor::getTypeForRecordType(const clang::RecordType *RecordType,
       revng_log(Log,
                 "There should be a typedef for struct that defines the "
                 "primitive type");
-      return model::UpcastableType::empty();
+      return model::UpcastableType::makeEmpty();
     }
     auto TypeName = AsTypedef->getDecl()->getName();
     auto R = model::PrimitiveType::fromCName(TypeName);
@@ -353,7 +353,7 @@ DeclVisitor::getTypeForRecordType(const clang::RecordType *RecordType,
   auto Name = RecordType->getDecl()->getName();
   if (Name.empty()) {
     revng_log(Log, "Unable to find record type without name");
-    return model::UpcastableType::empty();
+    return model::UpcastableType::makeEmpty();
   }
 
   if (RecordType->isStructureType()) {
@@ -366,7 +366,7 @@ DeclVisitor::getTypeForRecordType(const clang::RecordType *RecordType,
   }
 
   revng_log(Log, "Unable to find record type " << Name);
-  return model::UpcastableType::empty();
+  return model::UpcastableType::makeEmpty();
 }
 
 model::UpcastableType
@@ -377,14 +377,14 @@ DeclVisitor::getTypeForEnumType(const clang::EnumType *EnumType) {
   auto EnumName = EnumType->getDecl()->getName();
   if (EnumName.empty()) {
     revng_log(Log, "Unable to find enum type without name");
-    return model::UpcastableType::empty();
+    return model::UpcastableType::makeEmpty();
   }
 
   if (auto Enum = makeTypeByNameOrID<model::EnumDefinition>(EnumName))
     return Enum;
 
   revng_log(Log, "Unable to find enum type " << EnumName);
-  return model::UpcastableType::empty();
+  return model::UpcastableType::makeEmpty();
 }
 
 bool DeclVisitor::comesFromInternalFile(const clang::Decl *D) {
@@ -476,7 +476,7 @@ DeclVisitor::getModelTypeForClangType(const QualType &QT) {
     revng_log(Log, "Unsupported QualType");
   }
 
-  if (not R.isEmpty() and QT.isConstQualified())
+  if (not R.empty() and QT.isConstQualified())
     R->IsConst() = true;
 
   rc_return R;
@@ -889,7 +889,7 @@ bool DeclVisitor::handleStructType(const clang::RecordDecl *RD) {
     const QualType &ClangFieldType = Field->getType();
     model::UpcastableType ModelField = getModelTypeForClangType(ClangFieldType);
 
-    if (ModelField.isEmpty()) {
+    if (ModelField.empty()) {
       revng_log(Log, "Unsupported type for a struct field");
       return false;
     }

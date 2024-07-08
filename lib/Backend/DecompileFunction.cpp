@@ -1865,7 +1865,7 @@ static std::string getModelArgIdentifier(const model::TypeDefinition *ModelFT,
     auto NumModelArguments = RFT->Arguments().size();
     revng_assert(ArgNo <= NumModelArguments + 1);
     revng_assert(LLVMFunction->arg_size() == NumModelArguments
-                 or (not RFT->StackArgumentsType().isEmpty()
+                 or (not RFT->StackArgumentsType().empty()
                      and (LLVMFunction->arg_size() == NumModelArguments + 1)));
     if (ArgNo < NumModelArguments) {
       return std::next(RFT->Arguments().begin(), ArgNo)->name().str().str();
@@ -1913,7 +1913,7 @@ void CCodeGenerator::emitFunction(bool NeedsLocalStateVar,
     bool IsStackDefined = false;
 
     // Declare the local variable representing the stack frame
-    if (not ModelFunction.StackFrameType().isEmpty()) {
+    if (not ModelFunction.StackFrameType().empty()) {
       revng_log(Log, "Stack Frame Declaration");
       const auto &IsStackFrameDecl = [](const llvm::Instruction &I) {
         return isStackFrameDecl(&I);

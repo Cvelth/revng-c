@@ -384,7 +384,7 @@ static model::UpcastableType getCommonScalarType(const model::Type &A,
     } else {
       // One is a pointer and the other is an enum: we can't find a common
       // type.
-      return model::UpcastableType::empty();
+      return model::UpcastableType::makeEmpty();
     }
   }
 }
@@ -643,8 +643,7 @@ initModelTypesImpl(const llvm::Function &F,
                            VisitedPHIs);
       if (PointersOnly) {
         // Skip if it's not a pointer and we are only interested in pointers
-        if (Result.has_value() and !Result->isEmpty()
-            and (*Result)->isPointer())
+        if (Result.has_value() and !Result->empty() and (*Result)->isPointer())
           TypeMap.insert({ &I, std::move(*Result) });
 
       } else if (Result.has_value()) {

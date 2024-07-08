@@ -103,7 +103,7 @@ public:
   static ModelTypedIRAddress invalid() { return ModelTypedIRAddress(); }
 
   bool isValid() const {
-    return nullptr != Address and not PointeeType.isEmpty()
+    return nullptr != Address and not PointeeType.empty()
            and PointeeType->verify();
   }
 
@@ -948,7 +948,7 @@ static DifferenceScore lowerBound(const ModelGEPReplacementInfo &GEPInfo,
   const auto &[BaseOffset, Indices] = GEPInfo.Mismatched;
 
   uint64_t AccessedSizeOnIR = 0ULL;
-  if (not AccessedTypeOnIR.isEmpty()) {
+  if (not AccessedTypeOnIR.empty()) {
     std::optional<uint64_t> AccessedSize = AccessedTypeOnIR->size(VH);
     AccessedSizeOnIR = AccessedSize.value_or(0ULL);
   }
@@ -984,7 +984,7 @@ static DifferenceScore lowerBound(const ModelGEPReplacementInfo &GEPInfo,
   // If the IR doesn't have a pointee type the best case scenario is an inRange.
   // We cannot have a perfectMatch or a sameSizeMatch if we don't have another
   // type to compare it with.
-  if (AccessedTypeOnIR.isEmpty())
+  if (AccessedTypeOnIR.empty())
     return DifferenceScore::inRange(MatchDepth);
 
   // If the IR has a pointee type, the best that can happen we find a perfect
@@ -1019,7 +1019,7 @@ static DifferenceScore difference(const ModelGEPReplacementInfo &GEPInfo,
   // 1. If the AccessedTypeOnIR is NOT known we assume its not the same as
   // GEPInfo.AccessedType BUT we assume it's not out of bound so we return
   // inRange
-  if (AccessedTypeOnIR.isEmpty())
+  if (AccessedTypeOnIR.empty())
     return DifferenceScore::inRange(Depth);
 
   // 2. if the AccessedTypeOnIR is known, and is the same as the
@@ -1078,7 +1078,7 @@ computeBestInArray(const model::UpcastableType &BaseType,
                                             /* Accessed = */ BaseType);
 
   uint64_t AccessedSizeOnIR = 0ULL;
-  if (not AccessedTypeOnIR.isEmpty()) {
+  if (not AccessedTypeOnIR.empty()) {
     std::optional<uint64_t> AccessedSize = AccessedTypeOnIR->size(VH);
     AccessedSizeOnIR = AccessedSize.value_or(0ULL);
   }
@@ -1257,7 +1257,7 @@ computeBestInStruct(const model::UpcastableType &BaseStruct,
                                        /* Accessed = */ BaseStruct);
 
   uint64_t AccessedSizeOnIR = 0ULL;
-  if (not AccessedTypeOnIR.isEmpty()) {
+  if (not AccessedTypeOnIR.empty()) {
     std::optional<uint64_t> AccessedSize = AccessedTypeOnIR->size(VH);
     AccessedSizeOnIR = AccessedSize.value_or(0ULL);
   }
@@ -1591,7 +1591,7 @@ getAccessedTypeOnIR(const llvm::Use &U,
 
   auto *UserInstr = dyn_cast<Instruction>(U.getUser());
   if (nullptr == UserInstr)
-    return model::UpcastableType::empty();
+    return model::UpcastableType::makeEmpty();
 
   switch (UserInstr->getOpcode()) {
 
@@ -1644,7 +1644,7 @@ getAccessedTypeOnIR(const llvm::Use &U,
         Result = It->second->getPointee();
       }
 
-      if (Result.isEmpty() or Result->isStruct() or Result->isUnion()) {
+      if (Result.empty() or Result->isStruct() or Result->isUnion()) {
         // Do not allow structs or unions.
         auto *Stored = Store->getValueOperand();
         revng_assert(Stored->getType()->isIntOrPtrTy());
@@ -1774,7 +1774,7 @@ getAccessedTypeOnIR(const llvm::Use &U,
 
         auto MoreIndent = LoggerIndent(ModelGEPLog);
         auto ModelArgSize = RFT->Arguments().size();
-        bool HasStackArgs = not RFT->StackArgumentsType().isEmpty();
+        bool HasStackArgs = not RFT->StackArgumentsType().empty();
         revng_assert((ModelArgSize == Call->arg_size() - 1 and HasStackArgs)
                      or ModelArgSize == Call->arg_size());
         revng_log(ModelGEPLog, "model::RawFunctionDefinition");
@@ -1837,10 +1837,10 @@ getAccessedTypeOnIR(const llvm::Use &U,
   } break;
 
   default:
-    return model::UpcastableType::empty();
+    return model::UpcastableType::makeEmpty();
   }
 
-  return model::UpcastableType::empty();
+  return model::UpcastableType::makeEmpty();
 }
 
 struct UseReplacementWithModelGEP {

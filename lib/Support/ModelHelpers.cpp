@@ -72,7 +72,7 @@ model::UpcastableType modelType(const llvm::Value *V,
 
 model::UpcastableType llvmIntToModelType(const llvm::Type *TypeToConvert,
                                          const model::Binary &Model) {
-  model::UpcastableType Result = model::UpcastableType::empty();
+  model::UpcastableType Result = model::UpcastableType::makeEmpty();
   if (isa<llvm::PointerType>(TypeToConvert)) {
     // If it's a pointer, return intptr_t for the current architecture
     //
@@ -94,7 +94,7 @@ model::UpcastableType llvmIntToModelType(const llvm::Type *TypeToConvert,
     }
   }
 
-  if (Result.isEmpty()) {
+  if (Result.empty()) {
     revng_abort("Only integer and pointer types can be directly converted from "
                 "LLVM types to C types.");
   }
@@ -116,9 +116,10 @@ model::UpcastableType deserializeFromLLVMString(llvm::Value *V,
     revng_abort(Error.c_str());
   }
 
-  revng_assert(!ParsedType->isEmpty(),
+  revng_assert(!ParsedType->empty(),
                "Type in a LLVM constant string was set to "
-               "`model::UpcastableType::empty()`. How did it slip through?");
+               "`model::UpcastableType::makeEmpty()`. How did it slip "
+               "through?");
 
   if (model::DefinedType *Defined = (*ParsedType)->skipToDefinedType()) {
     model::DefinitionReference &Reference = Defined->Definition();
@@ -319,7 +320,7 @@ getStrongModelInfo(const llvm::Instruction *Inst, const model::Binary &Model) {
         const auto &[StartAddress,
                      VirtualSize] = extractSegmentKeyFromMetadata(*CalledFunc);
         auto Segment = Model.Segments().at({ StartAddress, VirtualSize });
-        if (not Segment.Type().isEmpty())
+        if (not Segment.Type().empty())
           rc_return{ Segment.Type() };
 
       } else if (FTags.contains(FunctionTags::Parentheses)) {
@@ -339,7 +340,7 @@ getStrongModelInfo(const llvm::Instruction *Inst, const model::Binary &Model) {
 
       } else if (FuncName.startswith("revng_stack_frame")) {
         // Retrieve the stack frame type
-        revng_assert(not ParentFunc()->StackFrameType().isEmpty());
+        revng_assert(not ParentFunc()->StackFrameType().empty());
         rc_return{ ParentFunc()->StackFrameType() };
 
       } else {
@@ -422,7 +423,7 @@ getExpectedModelType(const llvm::Use *U, const model::Binary &Model) {
         auto *Arg0Operand = Call->getArgOperand(0);
         auto CallStackArgumentType = deserializeFromLLVMString(Arg0Operand,
                                                                Model);
-        revng_assert(not CallStackArgumentType.isEmpty());
+        revng_assert(not CallStackArgumentType.empty());
 
         return { std::move(CallStackArgumentType) };
       } else if (FTags.contains(FunctionTags::StructInitializer)) {

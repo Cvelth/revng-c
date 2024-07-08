@@ -81,7 +81,7 @@ getOriginalOrPromotedType(const model::Type &OperandType,
 
   const auto &Unwrapped = *OperandType.skipConstAndTypedefs();
   if (not Unwrapped.isObject() or not Unwrapped.isScalar())
-    return model::UpcastableType::empty();
+    return model::UpcastableType::makeEmpty();
 
   if (OperandType.isPointer()) {
     return OperandType;
@@ -93,11 +93,11 @@ getOriginalOrPromotedType(const model::Type &OperandType,
     if (Enum->size() >= 4u)
       return OperandType;
     else
-      return model::UpcastableType::empty();
+      return model::UpcastableType::makeEmpty();
 
   } else if (const model::PrimitiveType *Primitive = Unwrapped.getPrimitive()) {
     if (Primitive->isFloatPrimitive())
-      return model::UpcastableType::empty();
+      return model::UpcastableType::makeEmpty();
 
     model::UpcastableType Copy = *Primitive;
     if (Copy->toPrimitive().Size() < 4)
@@ -364,8 +364,8 @@ bool IMCP::collectTypeInfoForPromotionForSingleValue(const llvm::Value *Value,
     // reducing-cast-algorithm.
     auto [It, Success] = PromotedTypes[I].try_emplace(Value, PromotedType);
     if (not Success) {
-      revng_assert(not It->second.isEmpty());
-      revng_assert(not PromotedType.isEmpty());
+      revng_assert(not It->second.empty());
+      revng_assert(not PromotedType.empty());
       revng_assert(*It->second == *PromotedType);
     }
 
@@ -385,7 +385,7 @@ bool IMCP::collectTypeInfoForTypePromotion(llvm::Instruction *I,
   bool Result = false;
   auto CheckTypeFor = [this, &Model, &Result, &I](const llvm::Use &Op) {
     const model::Type *OperandType = nullptr;
-    model::UpcastableType ExpectedType = model::UpcastableType::empty();
+    model::UpcastableType ExpectedType = model::UpcastableType::makeEmpty();
     llvm::Value *ValueToPromoteTypeFor = nullptr;
     if (isCallToTagged(Op.get(), FunctionTags::ModelCast)) {
       // If it is a ModelCast, get the type for the value being casted.
@@ -408,7 +408,7 @@ bool IMCP::collectTypeInfoForTypePromotion(llvm::Instruction *I,
 
     revng_assert(OperandType != nullptr);
     revng_assert(OperandType->verify(true));
-    revng_assert(not ExpectedType.isEmpty());
+    revng_assert(not ExpectedType.empty());
     revng_assert(ExpectedType->verify(true));
     if (OperandType->isScalar() and ExpectedType->isScalar()) {
       // Integer promotion - stage 1: Try to see if the operand can be
