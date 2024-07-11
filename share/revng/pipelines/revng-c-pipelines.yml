@@ -273,5 +273,4 @@ AnalysesLists:
   - Name: revng-c-initial-auto-analysis
     Analyses:
       - detect-stack-size
-      - analyze-data-layout
       - convert-functions-to-cabi
