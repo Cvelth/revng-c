@@ -179,8 +179,6 @@ void CycleEquivalenceAnalysis<GraphT, GT>::computeDFSAndSpanningTree(BlockGraph
       return Pair.Neighbor == CurrentNode;
     };
 
-    ChildrenEdgesRange = llvm::children_edges<UndirectedGraphT>(SourceNode);
-
     // IVAN: the following invocation, works only when compiling this compile
     // unit with `#pragma clang optimize off`, if the pragma is commented away
     // (do it on top of the file), it is like the range `ChildrenEdgesRange`
@@ -202,7 +200,7 @@ void CycleEquivalenceAnalysis<GraphT, GT>::computeDFSAndSpanningTree(BlockGraph
   // the `TreeEdge`s
   for (BlockNode *CurrentNode :
        llvm::depth_first(llvm::Undirected(Graph.getEntryNode()))) {
-    for (auto &[Neighbor, Label] :
+    for (auto [Neighbor, Label] :
          llvm::children_edges<llvm::Undirected<BlockNode *>>(CurrentNode)) {
       if (Label->type() == SpanningTreeEdgeKind::Invalid) {
         Label->setType(SpanningTreeEdgeKind::BackEdge);
@@ -315,7 +313,7 @@ CycleEquivalenceAnalysis<GraphT, GT>::getForwardEdges(BlockNode *Source) {
   size_t EndOfSuccs = llvm::size(llvm::children_edges<BlockNode *>(Source));
   size_t Index = 0;
 
-  for (auto &[Neighbor, Label] :
+  for (auto [Neighbor, Label] :
        llvm::children_edges<llvm::Undirected<BlockNode *>>(Source)) {
     auto Edge = BlockEdgeDescriptor({ Source, Neighbor, Label->id() });
     if (Label->type() == SpanningTreeEdgeKind::TreeEdge
@@ -350,7 +348,7 @@ CycleEquivalenceAnalysis<GraphT, GT>::getBackwardEdges(BlockNode *Source) {
   size_t EndOfSuccs = llvm::size(llvm::children_edges<BlockNode *>(Source));
   size_t Index = 0;
 
-  for (auto &[Neighbor, Label] :
+  for (auto [Neighbor, Label] :
        llvm::children_edges<llvm::Undirected<BlockNode *>>(Source)) {
     auto Edge = BlockEdgeDescriptor({ Source, Neighbor, Label->id() });
     if (Label->type() == SpanningTreeEdgeKind::BackEdge and isBackedge(Edge)) {
@@ -393,7 +391,7 @@ CycleEquivalenceAnalysis<GraphT, GT>::getTreeEdges(BlockNode *Source) {
   size_t EndOfSuccs = llvm::size(llvm::children_edges<BlockNode *>(Source));
   size_t Index = 0;
 
-  for (auto &[Neighbor, Label] :
+  for (auto [Neighbor, Label] :
        llvm::children_edges<llvm::Undirected<BlockNode *>>(Source)) {
     auto Edge = BlockEdgeDescriptor({ Neighbor, Source, Label->id() });
     if (Label->type() == SpanningTreeEdgeKind::TreeEdge
